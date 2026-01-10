@@ -1,0 +1,20 @@
+/.metadata/
+
+*.pdf
+*.html
+
+# store cache and user-data for IDE's embedded web browser
+.jxbrowser.userdata
+
+# ignore internal project files for CCS projects
+*.ccsproject
+*.cproject
+*.project
+*org.eclipse*
+*.LAUNCH
+*targetConfigs*
+*RemoteSystemsTempFiles*
+*.cmd
+
+# ignore all object files
+*Debug*
