@@ -61,6 +61,7 @@
 #include "interrupt.h"
 #include "hw_apps_rcm.h"
 #include "prcm.h"
+#include <stdbool.h>
 #include "rom.h"
 #include "rom_map.h"
 #include "prcm.h"
@@ -101,6 +102,7 @@ extern uVectorEntry __vector_table;
 //                      LOCAL FUNCTION PROTOTYPES                           
 //*****************************************************************************
 void SW3_BINARY_LED_ROUTINE();
+void SW2_UNISON_LED_ROUTINE();
 static void BoardInit(void);
 static void DisplayHeader(void);
 
@@ -168,9 +170,37 @@ void SW3_BINARY_LED_ROUTINE()
 
         // Delay for a time, then toggle off
         MAP_UtilsDelay(SCALAR_MULTIPLE * BLINKY_TIME);
-        GPIO_IF_LedOff(MCU_RED_LED_GPIO);
-        GPIO_IF_LedOff(MCU_GREEN_LED_GPIO);
-        GPIO_IF_LedOff(MCU_ORANGE_LED_GPIO);
+        GPIO_IF_LedOff(MCU_ALL_LED_IND);
+    }
+}
+
+//*****************************************************************************
+//
+//! Configures the pins as GPIOs and periodically toggles the lines
+//!
+//! \param None
+//!
+//! This function
+//!    1. Configures 3 lines connected to LEDs as GPIO
+//!    2. Sets up the GPIO pins as output
+//!    3. Toggles the LED's in unison, with momentary delay in between.
+//!
+//! \return None
+//
+//*****************************************************************************
+void SW2_UNISON_LED_ROUTINE()
+{
+
+    GPIO_IF_LedOff(MCU_ALL_LED_IND);
+    Message("SW2 pressed");
+    // let on-and-off unison pattern take place 3 times
+    unsigned int i;
+    for (i = 0; i < 3; i++)
+    {
+        GPIO_IF_LedOn(MCU_ALL_LED_IND);
+        MAP_UtilsDelay(SCALAR_MULTIPLE * BLINKY_TIME);
+        GPIO_IF_LedOff(MCU_ALL_LED_IND);
+        MAP_UtilsDelay(SCALAR_MULTIPLE * BLINKY_TIME);
     }
 }
 
@@ -276,13 +306,26 @@ main()
     //
     // Listen for switch presses (waste clock cycles, but simple implementation)
     //
+    bool use_sw3 = 0;
+    bool use_sw2 = 0;
     while(1) {
         // Value of SW3 (GPIO_13 is bit (pin) 5, port group A1)
-        // If pin 5's bit-value is 1, the switch was pressed
-        if ((GPIOPinRead(GPIOA1_BASE, GPIO_PIN_5) & GPIO_PIN_5))
+        // If pin 5's bit-value is 1, SW3 was pressed
+        if ((GPIOPinRead(GPIOA1_BASE, GPIO_PIN_5) & GPIO_PIN_5) && !use_sw2)
         {
+            use_sw3 = 0;
+            use_sw2 = 1;
             SW3_BINARY_LED_ROUTINE();
             Message("\n");
+        }
+        // Otherwise, check value of SW2 (GPIO_22 is bit (pin) 6, port group A2)
+        // if pin 6's bit-value is 1, SW2 was pressed
+        if ((GPIOPinRead(GPIOA2_BASE, GPIO_PIN_6) & GPIO_PIN_6) && !use_sw3)
+        {
+           use_sw3 = 1;
+           use_sw2 = 0;
+           SW2_UNISON_LED_ROUTINE();
+           Message("\n");
         }
     }
 
