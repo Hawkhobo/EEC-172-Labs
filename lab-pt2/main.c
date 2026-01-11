@@ -71,7 +71,7 @@
 // Common interface includes
 #include "gpio_if.h"
 
-#include "pinmux.h"
+#include "pin_mux_config.h"
 
 #define APPLICATION_VERSION     "1.4.0"
 

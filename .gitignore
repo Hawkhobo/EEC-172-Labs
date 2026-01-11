@@ -18,3 +18,6 @@
 
 # ignore all object files
 *Debug*
+
+# let TI CCS IDE handle pinmux configuration
+*.syscfg
