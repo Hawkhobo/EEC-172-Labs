@@ -133,6 +133,9 @@ void SW3_BINARY_LED_ROUTINE()
     GPIO_IF_LedOff(MCU_ALL_LED_IND);
     Message("SW3 pressed");
 
+    // set P18 signal to low
+    GPIOPinWrite(GPIOA3_BASE, GPIO_PIN_4, 0);
+
     // use a 3-bit for loop strategy to toggle the appropriate LEDs
     unsigned int i;
     for (i = 0; i < 8; i++)
@@ -190,9 +193,12 @@ void SW3_BINARY_LED_ROUTINE()
 //*****************************************************************************
 void SW2_UNISON_LED_ROUTINE()
 {
-
     GPIO_IF_LedOff(MCU_ALL_LED_IND);
     Message("SW2 pressed");
+
+    // set P18 signal to high (bitmask must be matched to set to high)
+    GPIOPinWrite(GPIOA3_BASE, GPIO_PIN_4, GPIO_PIN_4);
+
     // let on-and-off unison pattern take place 3 times
     unsigned int i;
     for (i = 0; i < 3; i++)
