@@ -79,7 +79,9 @@
 //                          MACROS                                  
 //*****************************************************************************
 #define APPLICATION_VERSION     "1.4.0"
-#define MAX_STRING_LENGTH 80
+// the amount of time used for delay in CC3200 SDK'S blinky example
+#define BLINKY_TIME 8000000
+#define SCALAR_MULTIPLE 3
 
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
@@ -98,7 +100,7 @@ extern uVectorEntry __vector_table;
 //*****************************************************************************
 //                      LOCAL FUNCTION PROTOTYPES                           
 //*****************************************************************************
-void LEDBlinkyRoutine();
+void SW3_BINARY_LED_ROUTINE();
 static void BoardInit(void);
 static void DisplayHeader(void);
 
@@ -108,46 +110,70 @@ static void DisplayHeader(void);
 
 //*****************************************************************************
 //
-//! Configures the pins as GPIOs and peroidically toggles the lines
+//! Configures the pins as GPIOs and periodically toggles the lines
 //!
 //! \param None
 //! 
 //! This function  
 //!    1. Configures 3 lines connected to LEDs as GPIO
 //!    2. Sets up the GPIO pins as output
-//!    3. Periodically toggles each LED one by one by toggling the GPIO line
+//!    3. Toggles LED's in a binary sequence, 000 -> 111, with delay in-between. When 111 is reached, it loops back to the start.
 //!
 //! \return None
 //
 //*****************************************************************************
-void LEDBlinkyRoutine()
+void SW3_BINARY_LED_ROUTINE()
 {
     //
     // Toggle the lines initially to turn off the LEDs.
     // The values driven are as required by the LEDs on the LP.
     //
     GPIO_IF_LedOff(MCU_ALL_LED_IND);
-    while(1)
-    {
-        //
-        // Alternately toggle hi-low each of the GPIOs
-        // to switch the corresponding LED on/off.
-        //
-        MAP_UtilsDelay(8000000);
-        GPIO_IF_LedOn(MCU_RED_LED_GPIO);
-        MAP_UtilsDelay(8000000);
-        GPIO_IF_LedOff(MCU_RED_LED_GPIO);
-        MAP_UtilsDelay(8000000);
-        GPIO_IF_LedOn(MCU_ORANGE_LED_GPIO);
-        MAP_UtilsDelay(8000000);
-        GPIO_IF_LedOff(MCU_ORANGE_LED_GPIO);
-        MAP_UtilsDelay(8000000);
-        GPIO_IF_LedOn(MCU_GREEN_LED_GPIO);
-        MAP_UtilsDelay(8000000);
-        GPIO_IF_LedOff(MCU_GREEN_LED_GPIO);
-    }
+    Message("SW3 pressed");
 
+    // use a 3-bit for loop strategy to toggle the appropriate LEDs
+    unsigned int i;
+    for (i = 0; i < 8; i++)
+    {
+        // MSB (corresponds to green)
+        if (i & (1 << 2))
+        {
+            GPIO_IF_LedOn(MCU_GREEN_LED_GPIO);
+        }
+        else
+        {
+            GPIO_IF_LedOff(MCU_GREEN_LED_GPIO);
+        }
+
+        // middle bit (corresponds to orange)
+        if (i & (1 << 1))
+        {
+            GPIO_IF_LedOn(MCU_ORANGE_LED_GPIO);
+        }
+        else
+        {
+            GPIO_IF_LedOff(MCU_ORANGE_LED_GPIO);
+        }
+
+
+        // LSB (corresponds to red)
+        if (i & (1 << 0))
+        {
+            GPIO_IF_LedOn(MCU_RED_LED_GPIO);
+        }
+        else
+        {
+            GPIO_IF_LedOff(MCU_RED_LED_GPIO);
+        }
+
+        // Delay for a time, then toggle off
+        MAP_UtilsDelay(SCALAR_MULTIPLE * BLINKY_TIME);
+        GPIO_IF_LedOff(MCU_RED_LED_GPIO);
+        GPIO_IF_LedOff(MCU_GREEN_LED_GPIO);
+        GPIO_IF_LedOff(MCU_ORANGE_LED_GPIO);
+    }
 }
+
 //*****************************************************************************
 //
 //! Board Initialization & Configuration
@@ -206,7 +232,7 @@ DisplayHeader(void)
     Message("                                                    \n\r");
     Message("\tPush SW2 to blink LEDs on and off                 \n\r");
     Message("                                                    \n\r");
-    Message("****************************************************\n\r");
+    Message("****************************************************\n\n\r");
 }
 
 //****************************************************************************
@@ -216,7 +242,8 @@ DisplayHeader(void)
 //! \param none
 //! 
 //! This function  
-//!    1. Invokes the LEDBlinkyTask
+//!    1. Invoked the SW3 binary task if SW3 is pressed
+//!    2. Invokes the SW2 on-off unison task if SW2 is pressed
 //!
 //! \return None.
 //
@@ -224,9 +251,6 @@ DisplayHeader(void)
 int
 main()
 {
-    char cString[MAX_STRING_LENGTH+1];
-    char cCharacter;
-    int iStringLength = 0;
     //
     // Initialize Board configurations
     //
@@ -245,15 +269,23 @@ main()
     // Power on the corresponding GPIO port B for 9,10,11.
     // Set up the GPIO lines to mode 0 (GPIO)
     //
-    PinMuxConfig();
     GPIO_IF_LedConfigure(LED1|LED2|LED3);
-
     GPIO_IF_LedOff(MCU_ALL_LED_IND);
     
+
     //
-    // Start the LEDBlinkyRoutine
+    // Listen for switch presses (waste clock cycles, but simple implementation)
     //
-    LEDBlinkyRoutine();
+    while(1) {
+        // Value of SW3 (GPIO_13 is bit (pin) 5, port group A1)
+        // If pin 5's bit-value is 1, the switch was pressed
+        if ((GPIOPinRead(GPIOA1_BASE, GPIO_PIN_5) & GPIO_PIN_5))
+        {
+            SW3_BINARY_LED_ROUTINE();
+            Message("\n");
+        }
+    }
+
     return 0;
 }
 
