@@ -35,12 +35,11 @@
 
 //*****************************************************************************
 //
-// Application Name     - Blinky
-// Application Overview - The objective of this application is to showcase the 
-//                        GPIO control using Driverlib api calls. The LEDs 
-//                        connected to the GPIOs on the LP are used to indicate 
-//                        the GPIO output. The GPIOs are driven high-low 
-//                        periodically in order to turn on-off the LEDs.
+// Application Name     - CC3200 GPIO Application
+// Application Overview - Push SW3 switch to start LED binary counting.
+//                        Or, push SW2 switch to blink LEDs on & off.
+//                        Code adapted from ti CC3200 SDK blinky example,
+//                        all licenses apply.
 //
 //*****************************************************************************
 
@@ -66,6 +65,8 @@
 #include "rom_map.h"
 #include "prcm.h"
 #include "gpio.h"
+#include "uart.h"
+#include "uart_if.h"
 #include "utils.h"
 
 // Common interface includes
@@ -73,7 +74,12 @@
 
 #include "pin_mux_config.h"
 
+
+//*****************************************************************************
+//                          MACROS                                  
+//*****************************************************************************
 #define APPLICATION_VERSION     "1.4.0"
+#define MAX_STRING_LENGTH 80
 
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
@@ -94,6 +100,7 @@ extern uVectorEntry __vector_table;
 //*****************************************************************************
 void LEDBlinkyRoutine();
 static void BoardInit(void);
+static void DisplayHeader(void);
 
 //*****************************************************************************
 //                      LOCAL FUNCTION DEFINITIONS                         
@@ -174,6 +181,34 @@ BoardInit(void)
 
     PRCMCC3200MCUInit();
 }
+
+//*****************************************************************************
+//
+//! Display header and usage instructions to console when program starts
+//!
+//! \param  None
+//!
+//! \return None
+//
+//*****************************************************************************
+static void
+DisplayHeader(void)
+{
+    Message("****************************************************\n\r");
+    Message("                                                    \n\r");
+    Message("\tCC3200 GPIO Application                           \n\r");
+    Message("                                                    \n\r");
+    Message("****************************************************\n\r");
+    Message("                                                    \n\r");
+    Message("****************************************************\n\r");
+    Message("                                                    \n\r");
+    Message("\tPush SW3 to start LED binary counting             \n\r");
+    Message("                                                    \n\r");
+    Message("\tPush SW2 to blink LEDs on and off                 \n\r");
+    Message("                                                    \n\r");
+    Message("****************************************************\n\r");
+}
+
 //****************************************************************************
 //
 //! Main function
@@ -189,10 +224,22 @@ BoardInit(void)
 int
 main()
 {
+    char cString[MAX_STRING_LENGTH+1];
+    char cCharacter;
+    int iStringLength = 0;
     //
     // Initialize Board configurations
     //
     BoardInit();
+
+    // enable pin multiplexers defined in .sysconf
+    PinMuxConfig();
+
+    // terminal header text
+    InitTerm();
+    ClearTerm();
+    DisplayHeader();
+
     
     //
     // Power on the corresponding GPIO port B for 9,10,11.
