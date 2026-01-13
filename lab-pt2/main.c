@@ -82,7 +82,7 @@
 #define APPLICATION_VERSION     "1.4.0"
 // the amount of time used for delay in CC3200 SDK'S blinky example
 #define BLINKY_TIME 8000000
-#define SCALAR_MULTIPLE 3
+#define SCALAR_MULTIPLE 3.0
 
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start

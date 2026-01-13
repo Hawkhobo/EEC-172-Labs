@@ -1,7 +1,6 @@
 /.metadata/
 
 *.pdf
-*.png
 *.html
 
 # store cache and user-data for IDE's embedded web browser
