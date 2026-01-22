@@ -35,10 +35,9 @@
 
 //*****************************************************************************
 //
-// Application Name     - SPI Demo
-// Application Overview - The demo application focuses on showing the required 
-//                        initialization sequence to enable the CC3200 SPI 
-//                        module in full duplex 4-wire master and slave mode(s).
+// Application Name     - Lab 2 Pt. 1 -- Adafruit SPI
+// Application Overview - Enable SPI communication between the CC3200 microcontroller
+//                        and the Adafruit SSD1351 OLED
 //
 //*****************************************************************************
 
@@ -70,31 +69,22 @@
 #include "uart_if.h"
 #include "pin_mux_config.h"
 
+// OLED Adafruit functions for SPI
+#include "adafruit_oled_lib/Adafruit_SSD1351.h"
+
 
 #define APPLICATION_VERSION     "1.4.0"
-//*****************************************************************************
-//
-// Application Master/Slave mode selector macro
-//
-// MASTER_MODE = 1 : Application in master mode
-// MASTER_MODE = 0 : Application in slave mode
-//
-//*****************************************************************************
-#define MASTER_MODE      0
 
 #define SPI_IF_BIT_RATE  100000
 #define TR_BUFF_SIZE     100
 
 #define MASTER_MSG       "This is CC3200 SPI Master Application\n\r"
-#define SLAVE_MSG        "This is CC3200 SPI Slave Application\n\r"
 
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
 //*****************************************************************************
 static unsigned char g_ucTxBuff[TR_BUFF_SIZE];
 static unsigned char g_ucRxBuff[TR_BUFF_SIZE];
-static unsigned char ucTxBuffNdx;
-static unsigned char ucRxBuffNdx;
 
 #if defined(ccs)
 extern void (* const g_pfnVectors[])(void);
@@ -107,46 +97,11 @@ extern uVectorEntry __vector_table;
 //*****************************************************************************
 
 
-
-//*****************************************************************************
-//
-//! SPI Slave Interrupt handler
-//!
-//! This function is invoked when SPI slave has its receive register full or
-//! transmit register empty.
-//!
-//! \return None.
-//
-//*****************************************************************************
-static void SlaveIntHandler()
-{
-    unsigned long ulRecvData;
-    unsigned long ulStatus;
-
-    ulStatus = MAP_SPIIntStatus(GSPI_BASE,true);
-
-    MAP_SPIIntClear(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
-
-    if(ulStatus & SPI_INT_TX_EMPTY)
-    {
-        MAP_SPIDataPut(GSPI_BASE,g_ucTxBuff[ucTxBuffNdx%TR_BUFF_SIZE]);
-        ucTxBuffNdx++;
-    }
-
-    if(ulStatus & SPI_INT_RX_FULL)
-    {
-        MAP_SPIDataGetNonBlocking(GSPI_BASE,&ulRecvData);
-        g_ucTxBuff[ucRxBuffNdx%TR_BUFF_SIZE] = ulRecvData;
-        Report("%c",ulRecvData);
-        ucRxBuffNdx++;
-    }
-}
-
 //*****************************************************************************
 //
 //! SPI Master mode main loop
 //!
-//! This function configures SPI modelue as master and enables the channel for
+//! This function configures SPI module as master and enables the channel for
 //! communication
 //!
 //! \return None.
@@ -162,12 +117,6 @@ void MasterMain()
     // Initialize the message
     //
     memcpy(g_ucTxBuff,MASTER_MSG,sizeof(MASTER_MSG));
-
-    //
-    // Set Tx buffer index
-    //
-    ucTxBuffNdx = 0;
-    ucRxBuffNdx = 0;
 
     //
     // Reset SPI
@@ -268,65 +217,6 @@ void MasterMain()
     MAP_SPICSDisable(GSPI_BASE);
 }
 
-//*****************************************************************************
-//
-//! SPI Slave mode main loop
-//!
-//! This function configures SPI modelue as slave and enables the channel for
-//! communication
-//!
-//! \return None.
-//
-//*****************************************************************************
-void SlaveMain()
-{
-    //
-    // Initialize the message
-    //
-    memcpy(g_ucTxBuff,SLAVE_MSG,sizeof(SLAVE_MSG));
-
-    //
-    // Set Tx buffer index
-    //
-    ucTxBuffNdx = 0;
-    ucRxBuffNdx = 0;
-
-    //
-    // Reset SPI
-    //
-    MAP_SPIReset(GSPI_BASE);
-
-    //
-    // Configure SPI interface
-    //
-    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-                     SPI_IF_BIT_RATE,SPI_MODE_SLAVE,SPI_SUB_MODE_0,
-                     (SPI_HW_CTRL_CS |
-                     SPI_4PIN_MODE |
-                     SPI_TURBO_OFF |
-                     SPI_CS_ACTIVEHIGH |
-                     SPI_WL_8));
-
-    //
-    // Register Interrupt Handler
-    //
-    MAP_SPIIntRegister(GSPI_BASE,SlaveIntHandler);
-
-    //
-    // Enable Interrupts
-    //
-    MAP_SPIIntEnable(GSPI_BASE,SPI_INT_RX_FULL|SPI_INT_TX_EMPTY);
-
-    //
-    // Enable SPI for communication
-    //
-    MAP_SPIEnable(GSPI_BASE);
-
-    //
-    // Print mode on uart
-    //
-    Message("Enabled SPI Interface in Slave Mode\n\rReceived : ");
-}
 
 //*****************************************************************************
 //
@@ -378,7 +268,7 @@ void main()
     BoardInit();
 
     //
-    // Muxing UART and SPI lines.
+    // Muxing UART, SPI, GPIOP lines.
     //
     PinMuxConfig();
 
@@ -402,7 +292,7 @@ void main()
     //
     Message("\n\n\n\r");
     Message("\t\t   ********************************************\n\r");
-    Message("\t\t        CC3200 SPI Demo Application  \n\r");
+    Message("\t\t        CC3200 Adafruit SSD1351 OLED SPI Program  \n\r");
     Message("\t\t   ********************************************\n\r");
     Message("\n\n\n\r");
 
@@ -411,15 +301,9 @@ void main()
     //
     MAP_PRCMPeripheralReset(PRCM_GSPI);
 
-#if MASTER_MODE
 
     MasterMain();
 
-#else
-
-    SlaveMain();
-
-#endif
 
     while(1)
     {
