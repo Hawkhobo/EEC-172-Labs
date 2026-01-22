@@ -304,6 +304,11 @@ void main()
 
     MasterMain();
 
+    // Initialize OLED display
+    // TO DO: Set up write and data commands
+    // position may change
+    Adafruit_Init();
+
 
     while(1)
     {

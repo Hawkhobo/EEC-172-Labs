@@ -14,7 +14,7 @@
 #include "Adafruit_GFX.h"
 #include "Adafruit_SSD1351.h"
 
-static float p = 3.1415926;
+//static float p = 3.1415926;
 
 //*****************************************************************************
 //  function delays 3*ulCount cycles

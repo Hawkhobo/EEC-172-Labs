@@ -43,23 +43,17 @@ void writeData(unsigned char c) {
 }
 
 //*****************************************************************************
-void Adafruit_Init(void){
+void Adafruit_Init(void) {
 
-//TODO 3
-/* NOTE: This function assumes that the RESET pin of the 
-*  OLED has been wired to GPIO28, pin 18 (P2.2). If you 
-*  use a different pin for the OLED reset, then you should
-*  update the GPIOPinWrite commands below that set RESET 
-*  high or low.
-*/
 
   volatile unsigned long delay;
 
-  GPIOPinWrite(GPIOA3_BASE, 0x10, 0);	// RESET = RESET_LOW
+  // Using GPIO Pin 01 for RESET
+  GPIOPinWrite(GPIOA1_BASE, 0x4, 0);	// RESET = RESET_LOW
 
   for(delay=0; delay<100; delay=delay+1);// delay minimum 100 ns
 
-  GPIOPinWrite(GPIOA3_BASE, 0x10, 0x10);	// RESET = RESET_HIGH
+  GPIOPinWrite(GPIOA1_BASE, 0x4, 0x10);	// RESET = RESET_HIGH
 
 	// Initialization Sequence
   writeCommand(SSD1351_CMD_COMMANDLOCK);  // set command lock
