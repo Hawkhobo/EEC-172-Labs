@@ -185,11 +185,10 @@ void main()
     PinMuxConfig();
 
 
+    // Configure SPI for configuration
     SPIconfig();
 
     // Initialize OLED display
-    // TO DO: Set up write and data commands
-    // position may change
     Adafruit_Init();
 
 
@@ -199,4 +198,3 @@ void main()
     }
 
 }
-
