@@ -24,22 +24,32 @@
 
 //*****************************************************************************
 
+// write() functions follow the same scheme:
+// 1) set chip select to low
+// 2) reset DC pin
+// 3) write command/data via SPI
+// 4) set chip select to high
 void writeCommand(unsigned char c) {
 
-//TODO 1
-/* Write a function to send a command byte c to the OLED via
-*  SPI.
-*/
+    MAP_SPICSEnable(GSPI_BASE);
 
+    GPIOPinWrite(GPIOA1_BASE, 0x2, 0x10);
+
+    SPIDataPut(GSPI_BASE, c);
+
+    MAP_SPICSDisable(GSPI_BASE);
 }
 //*****************************************************************************
 
 void writeData(unsigned char c) {
 
-//TODO 2
-/* Write a function to send a data byte c to the OLED via
-*  SPI.
-*/
+    MAP_SPICSEnable(GSPI_BASE);
+
+    GPIOPinWrite(GPIOA1_BASE, 0x2, 0x10);
+
+    SPIDataPut(GSPI_BASE, c);
+
+    MAP_SPICSDisable(GSPI_BASE);
 }
 
 //*****************************************************************************
