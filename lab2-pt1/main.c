@@ -66,7 +66,6 @@
 #include "interrupt.h"
 
 // Common interface includes
-#include "uart_if.h"
 #include "pin_mux_config.h"
 
 // OLED Adafruit functions for SPI
@@ -83,8 +82,6 @@
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
 //*****************************************************************************
-static unsigned char g_ucTxBuff[TR_BUFF_SIZE];
-static unsigned char g_ucRxBuff[TR_BUFF_SIZE];
 
 #if defined(ccs)
 extern void (* const g_pfnVectors[])(void);
@@ -99,24 +96,15 @@ extern uVectorEntry __vector_table;
 
 //*****************************************************************************
 //
-//! SPI Master mode main loop
 //!
-//! This function configures SPI module as master and enables the channel for
-//! communication
+//!
+//! Configure SPI for communication
 //!
 //! \return None.
 //
 //*****************************************************************************
-void MasterMain()
+void SPIconfig()
 {
-
-    unsigned long ulUserData;
-    unsigned long ulDummy;
-
-    //
-    // Initialize the message
-    //
-    memcpy(g_ucTxBuff,MASTER_MSG,sizeof(MASTER_MSG));
 
     //
     // Reset SPI
@@ -139,82 +127,6 @@ void MasterMain()
     //
     MAP_SPIEnable(GSPI_BASE);
 
-    //
-    // Print mode on uart
-    //
-    Message("Enabled SPI Interface in Master Mode\n\r");
-
-    //
-    // User input
-    //
-    Report("Press any key to transmit data....");
-
-    //
-    // Read a character from UART terminal
-    //
-    ulUserData = MAP_UARTCharGet(UARTA0_BASE);
-
-
-    //
-    // Send the string to slave. Chip Select(CS) needs to be
-    // asserted at start of transfer and deasserted at the end.
-    //
-    MAP_SPITransfer(GSPI_BASE,g_ucTxBuff,g_ucRxBuff,50,
-            SPI_CS_ENABLE|SPI_CS_DISABLE);
-
-    //
-    // Report to the user
-    //
-    Report("\n\rSend      %s",g_ucTxBuff);
-    Report("Received  %s",g_ucRxBuff);
-
-    //
-    // Print a message
-    //
-    Report("\n\rType here (Press enter to exit) :");
-
-    //
-    // Initialize variable
-    //
-    ulUserData = 0;
-
-    //
-    // Enable Chip select
-    //
-    MAP_SPICSEnable(GSPI_BASE);
-
-    //
-    // Loop until user "Enter Key" is
-    // pressed
-    //
-    while(ulUserData != '\r')
-    {
-        //
-        // Read a character from UART terminal
-        //
-        ulUserData = MAP_UARTCharGet(UARTA0_BASE);
-
-        //
-        // Echo it back
-        //
-        MAP_UARTCharPut(UARTA0_BASE,ulUserData);
-
-        //
-        // Push the character over SPI
-        //
-        MAP_SPIDataPut(GSPI_BASE,ulUserData);
-
-        //
-        // Clean up the receive register into a dummy
-        // variable
-        //
-        MAP_SPIDataGet(GSPI_BASE,&ulDummy);
-    }
-
-    //
-    // Disable chip select
-    //
-    MAP_SPICSDisable(GSPI_BASE);
 }
 
 
@@ -268,41 +180,12 @@ void main()
     BoardInit();
 
     //
-    // Muxing UART, SPI, GPIOP lines.
+    // Muxing SPI, GPIOP lines.
     //
     PinMuxConfig();
 
-    //
-    // Enable the SPI module clock
-    //
-    MAP_PRCMPeripheralClkEnable(PRCM_GSPI,PRCM_RUN_MODE_CLK);
 
-    //
-    // Initialising the Terminal.
-    //
-    InitTerm();
-
-    //
-    // Clearing the Terminal.
-    //
-    ClearTerm();
-
-    //
-    // Display the Banner
-    //
-    Message("\n\n\n\r");
-    Message("\t\t   ********************************************\n\r");
-    Message("\t\t        CC3200 Adafruit SSD1351 OLED SPI Program  \n\r");
-    Message("\t\t   ********************************************\n\r");
-    Message("\n\n\n\r");
-
-    //
-    // Reset the peripheral
-    //
-    MAP_PRCMPeripheralReset(PRCM_GSPI);
-
-
-    MasterMain();
+    SPIconfig();
 
     // Initialize OLED display
     // TO DO: Set up write and data commands
