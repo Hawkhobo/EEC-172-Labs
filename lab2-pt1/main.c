@@ -165,7 +165,7 @@ BoardInit(void)
 
 //*****************************************************************************
 //
-//! Main function for spi demo application
+//! Main function for SPI OLED application
 //!
 //! \param none
 //!
