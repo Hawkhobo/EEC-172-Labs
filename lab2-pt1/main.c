@@ -51,6 +51,7 @@
 
 // Standard includes
 #include <string.h>
+#include <stdbool.h>
 
 // Driverlib includes
 #include "hw_types.h"
@@ -68,8 +69,11 @@
 // Common interface includes
 #include "pin_mux_config.h"
 
-// OLED Adafruit functions for SPI
+// OLED Adafruit functions for output via SPI
 #include "adafruit_oled_lib/Adafruit_SSD1351.h"
+#include "adafruit_oled_lib/Adafruit_GFX.h"
+#include "adafruit_oled_lib/glcdfont.h"
+#include "adafruit_oled_lib/oled_test.h"
 
 
 #define APPLICATION_VERSION     "1.4.0"
@@ -89,6 +93,9 @@ extern void (* const g_pfnVectors[])(void);
 #if defined(ewarm)
 extern uVectorEntry __vector_table;
 #endif
+
+#define GLCD_FONT_SIZE 1270
+#define DRAW_DELAY 100
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- End
 //*****************************************************************************
@@ -192,9 +199,93 @@ void main()
     Adafruit_Init();
 
 
+    // Run Adafruit output in a loop
     while(1)
     {
+        // Print full character set
+        int i = 0; int x = 0; int y = 0;
+        bool finished = false;
+        // NOTE: adjust increment count as needed if fonts are too closely packed
+        for (x = 0; x < SSD1351WIDTH && !finished; x++) {
+            for (y = 0; y < SSD1351HEIGHT; y++) {
+                if (i < GLCD_FONT_SIZE) {
+                    drawChar(x, y, font[i++], 1, 1, 1);
+                }
+                else {
+                    finished = true;
+                    break;
+                }
 
+            }
+        }
+
+        delay(DRAW_DELAY);
+
+        // Print hello world
+        unsigned char greeting[] = "Hello world!";
+        i = 0; x = 0; y = 0;
+        while (greeting[i] != '\0') {
+            drawChar(x, y, greeting[i], 1, 1, 1);
+            x++;
+            i++;
+        }
+
+        delay(DRAW_DELAY);
+
+        // 8 bands of different colors horizontally across OLED display
+        unsigned int colors[] = {0xfc0303, 0xfc6c05, 0xfcc205, 0xcffc05, 0x05fca1, 0x0509fc, 0x8105fc, 0xfc05f4};
+        int num_bands = 8;
+
+        i = 0; y = 0;
+        int width = SSD1351WIDTH / num_bands;
+        for (x = 0; x < SSD1351WIDTH; x += width) {
+                   drawFastHLine(x, y, width, colors[i]);
+                   i++;
+        }
+
+
+        delay(DRAW_DELAY);
+
+        // And now vertically
+        i = 0; x = 0;
+        int height = SSD1351HEIGHT / num_bands;
+        for (y = 0; y < SSD1351HEIGHT; y += height) {
+            drawFastVLine(x, y, height, colors[i]);
+            i++;
+        }
+
+
+        delay(DRAW_DELAY);
+
+        testlines(colors[0]);
+
+        delay(DRAW_DELAY);
+
+        testfastlines(colors[0], colors[1]);
+
+        delay(DRAW_DELAY);
+
+        testdrawrects(colors[2]);
+
+        delay(DRAW_DELAY);
+
+        testfillrects(colors[3], colors[4]);
+
+        delay(DRAW_DELAY);
+
+        testfillcircles(32, colors[4]);
+
+        delay(DRAW_DELAY);
+
+        testdrawcircles(32, colors[5]);
+
+        delay(DRAW_DELAY);
+
+        testroundrects();
+
+        delay (DRAW_DELAY);
+
+        testtriangles();
     }
 
 }

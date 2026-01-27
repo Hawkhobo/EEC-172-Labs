@@ -1,4 +1,3 @@
-
 // Standard includes
 #include <string.h>
 
