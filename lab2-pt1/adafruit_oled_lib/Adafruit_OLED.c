@@ -21,34 +21,42 @@
 
 #include "Adafruit_SSD1351.h"
 
-//*****************************************************************************
+#define DC_PIN      0x2   // GPIO_PIN_1 on GPIOA1_BASE
+#define RESET_PIN   0x4   // GPIO_PIN_2 on GPIOA1_BASE
+#define OLED_CS_PIN 0x8   // GPIO_PIN_3 on GPIOA1_BASE
 
-// write() functions follow the same scheme:
-// 1) set chip select to low
-// 2) reset DC pin
-// 3) write command/data via SPI
-// 4) set chip select to high
+// Macros for controlling pins
+#define DC_COMMAND()    GPIOPinWrite(GPIOA1_BASE, DC_PIN, 0)          // DC = LOW for commands
+#define DC_DATA()       GPIOPinWrite(GPIOA1_BASE, DC_PIN, DC_PIN)     // DC = HIGH for data
+#define CS_ENABLE()     GPIOPinWrite(GPIOA1_BASE, OLED_CS_PIN, 0)     // CS = LOW to enable
+#define CS_DISABLE()    GPIOPinWrite(GPIOA1_BASE, OLED_CS_PIN, OLED_CS_PIN) // CS = HIGH to disable
+
+//*****************************************************************************
 void writeCommand(unsigned char c) {
+    unsigned char dummy;
 
-    MAP_SPICSEnable(GSPI_BASE);
+    // Data Command Pin should be low for commands, CS is low to enable
+    DC_COMMAND();
+    CS_ENABLE(); // Enable LOW
 
-    GPIOPinWrite(GPIOA1_BASE, 0x2, 0x10);
+    // 0 disables automatic CS control; use manual GPIO CS
+    MAP_SPITransfer(GSPI_BASE, &c, &dummy, 1, 0);
 
-    SPIDataPut(GSPI_BASE, c);
-
-    MAP_SPICSDisable(GSPI_BASE);
+    CS_DISABLE(); // Disable HIGH
 }
+
 //*****************************************************************************
-
+// See writeCommand for explanatory comments
 void writeData(unsigned char c) {
+    unsigned char dummy;
 
-    MAP_SPICSEnable(GSPI_BASE);
+    // DC is set to high for Data
+    DC_DATA();
+    CS_ENABLE();
 
-    GPIOPinWrite(GPIOA1_BASE, 0x2, 0x10);
+    MAP_SPITransfer(GSPI_BASE, &c, &dummy, 1, 0);
 
-    SPIDataPut(GSPI_BASE, c);
-
-    MAP_SPICSDisable(GSPI_BASE);
+    CS_DISABLE();
 }
 
 //*****************************************************************************
@@ -60,9 +68,10 @@ void Adafruit_Init(void) {
   // Using GPIO Pin 01 for RESET
   GPIOPinWrite(GPIOA1_BASE, 0x4, 0);	// RESET = RESET_LOW
 
-  for(delay=0; delay<100; delay=delay+1);// delay minimum 100 ns
+  UtilsDelay(80000);
 
-  GPIOPinWrite(GPIOA1_BASE, 0x4, 0x10);	// RESET = RESET_HIGH
+  GPIOPinWrite(GPIOA1_BASE, 0x4, 0x4);	// RESET = RESET_HIGH
+  UtilsDelay(80000);
 
 	// Initialization Sequence
   writeCommand(SSD1351_CMD_COMMANDLOCK);  // set command lock
