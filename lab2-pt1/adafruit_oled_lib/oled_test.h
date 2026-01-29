@@ -19,6 +19,8 @@
 #define WHITE           0xFFFF
 
 
+
+void delay(unsigned long ulCount);
 void testfastlines(unsigned int color1, unsigned int color2);
 void testdrawrects(unsigned int color);
 void testfillrects(unsigned int color1, unsigned int color2);

@@ -80,7 +80,7 @@
 // MASTER_MODE = 0 : Application in slave mode
 //
 //*****************************************************************************
-#define MASTER_MODE      0
+#define MASTER_MODE      1
 
 #define SPI_IF_BIT_RATE  100000
 #define TR_BUFF_SIZE     100

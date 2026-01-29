@@ -51,6 +51,7 @@
 
 // Standard includes
 #include <string.h>
+#include <stdbool.h>
 
 // Driverlib includes
 #include "hw_types.h"
@@ -68,13 +69,16 @@
 // Common interface includes
 #include "pin_mux_config.h"
 
-// OLED Adafruit functions for SPI
+// OLED Adafruit functions for output via SPI
 #include "adafruit_oled_lib/Adafruit_SSD1351.h"
+#include "adafruit_oled_lib/Adafruit_GFX.h"
+#include "adafruit_oled_lib/glcdfont.h"
+#include "adafruit_oled_lib/oled_test.h"
 
 
 #define APPLICATION_VERSION     "1.4.0"
 
-#define SPI_IF_BIT_RATE  100000
+#define SPI_IF_BIT_RATE  1000000
 #define TR_BUFF_SIZE     100
 
 #define MASTER_MSG       "This is CC3200 SPI Master Application\n\r"
@@ -89,6 +93,11 @@ extern void (* const g_pfnVectors[])(void);
 #if defined(ewarm)
 extern uVectorEntry __vector_table;
 #endif
+
+#define GLCD_FONT_SIZE 1270
+#define DRAW_DELAY 24e6
+#define WHITE 0xFFFF
+#define PIXEL_WIDTH 8
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- End
 //*****************************************************************************
@@ -115,7 +124,7 @@ void SPIconfig()
     // Configure SPI interface
     //
     MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
-                     SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_0,
+                     SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_3,
                      (SPI_SW_CTRL_CS |
                      SPI_4PIN_MODE |
                      SPI_TURBO_OFF |
@@ -126,6 +135,9 @@ void SPIconfig()
     // Enable SPI for communication
     //
     MAP_SPIEnable(GSPI_BASE);
+
+    // enable internal SPI CS to satisfy SPI API; using GPIOP CS instead
+    MAP_SPICSEnable(GSPI_BASE);
 
 }
 
@@ -188,13 +200,112 @@ void main()
     // Configure SPI for configuration
     SPIconfig();
 
+
     // Initialize OLED display
     Adafruit_Init();
 
-
+    fillScreen(WHITE);
+    // Run Adafruit output in a loop
     while(1)
     {
+        // Print full character set
+        int i = 0; int x = 0; int y = 0;
+        bool finished = false;
+        // NOTE: adjust increment count as needed if fonts are too closely packed
+        for (x = 0; x < SSD1351WIDTH && !finished; x += PIXEL_WIDTH) {
+            for (y = 0; y < SSD1351HEIGHT; y += PIXEL_WIDTH) {
+                if (i < GLCD_FONT_SIZE) {
+                    drawChar(x, y, font[i++], 1, 1, 1);
+                }
+                else {
+                    finished = true;
+                    break;
+                }
 
+            }
+        }
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        // Print hello world
+        unsigned char greeting[] = "Hello world!";
+        i = 0; x = 0; y = 0;
+        while (greeting[i] != '\0') {
+            drawChar(x, y, greeting[i], 1, 1, 1);
+            x += PIXEL_WIDTH;
+            i++;
+        }
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        // 8 bands of different colors horizontally across OLED display
+        unsigned int colors[] = {0xfc0303, 0xfc6c05, 0xfcc205, 0xcffc05, 0x05fca1, 0x0509fc, 0x8105fc, 0xfc05f4};
+        int num_bands = 8;
+
+        i = 0; x = 0; y = 0;
+        int width = SSD1351WIDTH / num_bands;
+        for (y = 0; y < SSD1351WIDTH; y += width) {
+                   drawFastHLine(x, y, SSD1351WIDTH, colors[i]);
+                   i++;
+        }
+
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        // And now vertically
+        i = 0; x = 0; y = 0;
+        int height = SSD1351HEIGHT / num_bands;
+        for (x = 0; x < SSD1351HEIGHT; x += height)
+        {
+            drawFastVLine(x, y, SSD1351HEIGHT, colors[i]);
+            i++;
+        }
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+
+        testlines(colors[0]);
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testfastlines(colors[0], colors[1]);
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testdrawrects(colors[2]);
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testfillrects(colors[3], colors[4]);
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testfillcircles(32, colors[4]);
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testdrawcircles(32, colors[5]);
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testroundrects();
+
+        UtilsDelay(DRAW_DELAY);
+        fillScreen(WHITE);
+
+        testtriangles();
+
+        fillScreen(WHITE);
     }
 
 }
