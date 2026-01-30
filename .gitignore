@@ -21,3 +21,7 @@
 
 # let TI CCS IDE handle pinmux configuration
 *.syscfg
+
+# temp lyx files
+\#*.lyx\#
+*.lyx~
