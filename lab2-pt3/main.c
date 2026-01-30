@@ -52,12 +52,14 @@
 // Standard includes
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // Driverlib includes
 #include "hw_types.h"
 #include "hw_memmap.h"
 #include "hw_common_reg.h"
 #include "hw_ints.h"
+#include "i2c_if.h"
 #include "spi.h"
 #include "rom.h"
 #include "rom_map.h"
@@ -196,11 +198,11 @@ void main()
     //
     PinMuxConfig();
 
+
     //
     // I2C Init
     //
     I2C_IF_Open(I2C_MASTER_MODE_FST);
-
 
     // Configure SPI for configuration
     SPIconfig();
@@ -209,108 +211,54 @@ void main()
     // Initialize OLED display
     Adafruit_Init();
 
+    // registers for Accelerometer values
+    unsigned char reg_x = 0x03, reg_y = 0x05;
+    // raw x and y values should be int8_t to respect 2's complement (include negatives)
+    int8_t x_raw, y_raw;
+
+    float speed = 0.1;
+
+    // Initial position: center of screen
+    int x = SSD1351WIDTH / 2, y = SSD1351HEIGHT / 2;
+    // Radius should be about 4 pixels
+    int radius = 2;
+    // Run accelerometer circle on Adafruit OLED in a loop
     fillScreen(WHITE);
-    // Run Adafruit output in a loop
+    fillCircle(x, y, radius, RED);
     while(1)
     {
-        // Print full character set
-        int i = 0; int x = 0; int y = 0;
-        bool finished = false;
-        // NOTE: adjust increment count as needed if fonts are too closely packed
-        for (x = 0; x < SSD1351WIDTH && !finished; x += PIXEL_WIDTH) {
-            for (y = 0; y < SSD1351HEIGHT; y += PIXEL_WIDTH) {
-                if (i < GLCD_FONT_SIZE) {
-                    drawChar(x, y, font[i++], 1, 1, 1);
-                }
-                else {
-                    finished = true;
-                    break;
-                }
+        // refresh x,y variables based on accelerometer (read registers, write to var)
+        I2C_IF_Write(0x18, &reg_x, 1, 0);
+        I2C_IF_Read(0x18, (unsigned char *)&x_raw, 1);
 
-            }
+        I2C_IF_Write(0x18, &reg_y, 1, 0);
+        I2C_IF_Read(0x18, (unsigned char *)&y_raw, 1);
+
+        // Update position
+        int next_x = x + (int)(x_raw * speed);
+        int next_y = y + (int)(y_raw * speed);
+
+        // Bound to screen edges
+        if(next_x < radius) next_x = radius;
+        if(next_x > SSD1351WIDTH - radius) next_x = SSD1351WIDTH - radius;
+        if(next_y < radius) next_y = radius;
+        if(next_y > SSD1351HEIGHT - radius) next_y = SSD1351HEIGHT - radius;
+
+        // redraw if ball needs to move
+        if (next_x != x || next_y != y) {
+            // erase old ball
+            fillCircle(x, y, radius, WHITE);
+
+            // Update to new coordinates
+            x = next_x;
+            y = next_y;
+
+            // new ball
+            fillCircle(x, y, radius, RED);
         }
 
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
+        UtilsDelay(80000);
 
-        // Print hello world
-        unsigned char greeting[] = "Hello world!";
-        i = 0; x = 0; y = 0;
-        while (greeting[i] != '\0') {
-            drawChar(x, y, greeting[i], 1, 1, 1);
-            x += PIXEL_WIDTH;
-            i++;
-        }
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        // 8 bands of different colors horizontally across OLED display
-        unsigned int colors[] = {0xfc0303, 0xfc6c05, 0xfcc205, 0xcffc05, 0x05fca1, 0x0509fc, 0x8105fc, 0xfc05f4};
-        int num_bands = 8;
-
-        i = 0; x = 0; y = 0;
-        int width = SSD1351WIDTH / num_bands;
-        for (y = 0; y < SSD1351WIDTH; y += width) {
-                   drawFastHLine(x, y, SSD1351WIDTH, colors[i]);
-                   i++;
-        }
-
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        // And now vertically
-        i = 0; x = 0; y = 0;
-        int height = SSD1351HEIGHT / num_bands;
-        for (x = 0; x < SSD1351HEIGHT; x += height)
-        {
-            drawFastVLine(x, y, SSD1351HEIGHT, colors[i]);
-            i++;
-        }
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-
-        testlines(colors[0]);
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testfastlines(colors[0], colors[1]);
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testdrawrects(colors[2]);
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testfillrects(colors[3], colors[4]);
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testfillcircles(32, colors[4]);
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testdrawcircles(32, colors[5]);
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testroundrects();
-
-        UtilsDelay(DRAW_DELAY);
-        fillScreen(WHITE);
-
-        testtriangles();
-
-        fillScreen(WHITE);
     }
 
 }
