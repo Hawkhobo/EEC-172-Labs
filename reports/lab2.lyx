@@ -359,7 +359,8 @@ Adafruit SSD1351 Open Source Graphics Library:
  
 \family default
 Abridged from the Adafruit graphics library,
- provides an API to write commands (and their subsequent data) to the OLED.
+ provides an API to write commands (and their subsequent data) to the OLED,
+ as well as turn it on.
  Includes various functions to draw complex shapes on the digital display.
  This library is used extensively in this lab & modified.
  More information on the modifications will be detailed.
@@ -367,6 +368,88 @@ Abridged from the Adafruit graphics library,
 
 \begin_layout Subsection
 Hardware
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+CC3200 LaunchPad XL:
+ 
+\family default
+The microcontroller unit that orchestrates the SPI and I2C protocols in this lab.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Adafruit SSD1351 OLED Display:
+
+\family default
+ Digital display that accepts written commands and data from communication protocols,
+ and prints pixel output.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Breadboard:
+ 
+\family default
+The mount for the OLED,
+ and for quick and easy configuration of pin connectors to the OLED (from the MCU).
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+BMA222 Accelerometer:
+ 
+\family default
+On-board accelerometer that records the orientation of the MCU.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Saleae Logic Analyzer:
+ 
+\family default
+Logic Analyzer to read MCU pin signals across 4 channels.
+ Allows for graphical display of a signal when coupled with software.
+\end_layout
+
+\begin_layout Subsection
+Software
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+TI CCS Studio:
+ 
+\family default
+Integrated Development Environment to work with the MCU,
+ debug it,
+ and write C code.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+TI SysConfig:
+ 
+\family default
+Software to multiplex pins for configuration of pinouts.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Saleae Logic 2:
+ 
+\family default
+GUI software to display signals from the Saleae Logic Analyzer across 4 channels,
+ and interpret data based off analyzer profiles.
 \end_layout
 
 \begin_layout Theorem
