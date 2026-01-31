@@ -2,6 +2,7 @@
 // Lab 2 - Checkoff 1 & 2
 // Jacob Feenstra and Chun Ho Chen
 //*****************************************************************************
+//
 //*****************************************************************************
 //
 // Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
@@ -143,7 +144,7 @@ void SPIconfig()
     //
     MAP_SPIEnable(GSPI_BASE);
 
-    // enable internal SPI CS to satisfy SPI API;not we are using GPIOP CS instead to work with writeCommand() and writeData()
+    // enable internal SPI CS to satisfy SPI API;note we are using GPIOP CS instead to work with writeCommand() and writeData()
     MAP_SPICSEnable(GSPI_BASE);
 
 }

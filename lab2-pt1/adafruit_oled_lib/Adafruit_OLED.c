@@ -25,7 +25,7 @@
 #define RESET_PIN   0x4   // GPIO_PIN_2 on GPIOA1_BASE
 #define OLED_CS_PIN 0x8   // GPIO_PIN_3 on GPIOA1_BASE
 
-// Macros for controlling pins
+// Macros for controlling pins (short form)
 #define DC_COMMAND()    GPIOPinWrite(GPIOA1_BASE, DC_PIN, 0)          // DC = LOW for commands
 #define DC_DATA()       GPIOPinWrite(GPIOA1_BASE, DC_PIN, DC_PIN)     // DC = HIGH for data
 #define CS_ENABLE()     GPIOPinWrite(GPIOA1_BASE, OLED_CS_PIN, 0)     // CS = LOW to enable
@@ -33,6 +33,7 @@
 
 //*****************************************************************************
 void writeCommand(unsigned char c) {
+    // dummy char to satisfy MISO line
     unsigned char dummy;
 
     // Data Command Pin should be low for commands, CS is low to enable
@@ -48,14 +49,17 @@ void writeCommand(unsigned char c) {
 //*****************************************************************************
 // See writeCommand for explanatory comments
 void writeData(unsigned char c) {
+    // dummy char to satisfy MISO line
     unsigned char dummy;
 
     // DC is set to high for Data
     DC_DATA();
     CS_ENABLE();
 
+    // transfer data from SPI line
     MAP_SPITransfer(GSPI_BASE, &c, &dummy, 1, 0);
 
+    // disable chip select when transfer is complete
     CS_DISABLE();
 }
 
