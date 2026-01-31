@@ -8,6 +8,13 @@
 \begin_preamble
 % for subfigures/subtables
 \usepackage[caption=false,font=footnotesize]{subfig}
+
+% color for code
+\usepackage{xcolor}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 \end_preamble
 \options journal
 \use_default_options false
@@ -164,7 +171,7 @@ https://mirrors.ctan.org/macros/latex/contrib/IEEEtran/IEEEtran_HOWTO.pdf
 \end_layout
 
 \begin_layout Title
-Serial Interfacing with SPI and I2C 
+Serial Interfacing with SPI and I2C
 \end_layout
 
 \begin_layout Author
@@ -198,10 +205,6 @@ sideways false
 status open
 
 \begin_layout Plain Layout
-
-\end_layout
-
-\begin_layout Plain Layout
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
@@ -221,10 +224,6 @@ Checkoff Sheet
 
 \end_inset
 
-
-\end_layout
-
-\begin_layout Plain Layout
 
 \end_layout
 
@@ -278,7 +277,6 @@ Introduction
 In this lab,
  we familiarized ourselves with using communication protocols (SPI and I2C,
  respectively) to communicate to peripheral devices with our CC3200 Microntroller Unit (MCU).
- 
 \end_layout
 
 \begin_layout Enumerate
@@ -529,7 +527,6 @@ This lab introduces the Saleae Logic Analyzer,
  and it's corresponding software Saleae Logic 2.
  This is an important debugging tool in the arsenal of an embedded systems programmer,
  allowing for easy verification of signal traces for up to 4 pin-outs (organized by 4 channels in the Saleae Logic 2).
- 
 \end_layout
 
 \begin_layout Itemize
@@ -599,6 +596,2953 @@ natural acceleration
 
 \begin_layout Section
 Methods
+\end_layout
+
+\begin_layout Standard
+Now,
+ we detail the execution of the four checkoffs for Lab 2,
+ and the how & why of arriving at that execution.
+\end_layout
+
+\begin_layout Subsection
+Implement OLED Interface Using SPI
+\end_layout
+
+\begin_layout Standard
+The first order of business is to configure the pins for writing the required code.
+ We used the following pin arrangement:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:Checkoff-1-PinMux"
+
+\end_inset
+
+Checkoff 1 PinMux Config
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="8" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+OLED Signal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MCU Interface
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Physical Pin
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MOSI (SI)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SPI_DOUT (MOSI)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SCK (CL)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SPI_CLK (SCLK)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+DC
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GPIO
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+64
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Reset (R)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GPIO
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+OLEDCS (CS)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GPIO
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Vin (+)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3.3 V
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+VCC
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GND (G)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GND
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GND
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Connecting from the Physical MCU pins to the OLED pins (the signals indicated) gets us set up.
+ Then,
+ we can focus on the programming.
+ After initializing the board,
+ the first order of business is to configure the SPI with 
+\family typewriter
+SPIconfig()
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C,numbers=left,basicstyle={\scriptsize}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void SPIconfig()
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    //
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Reset SPI
+\end_layout
+
+\begin_layout Plain Layout
+
+    //
+\end_layout
+
+\begin_layout Plain Layout
+
+    MAP_SPIReset(GSPI_BASE);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    //
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Configure SPI interface
+\end_layout
+
+\begin_layout Plain Layout
+
+    //
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Using sub Mode 3;
+ using configured CS
+\end_layout
+
+\begin_layout Plain Layout
+
+    MAP_SPIConfigSetExpClk(GSPI_BASE,
+\end_layout
+
+\begin_layout Plain Layout
+
+			RCMPeripheralClockGet(PRCM_GSPI),
+\end_layout
+
+\begin_layout Plain Layout
+
+            SPI_IF_BIT_RATE,SPI_MODE_MASTER,
+\end_layout
+
+\begin_layout Plain Layout
+
+			(SPI_SUB_MODE_3,
+\end_layout
+
+\begin_layout Plain Layout
+
+            I_SW_CTRL_CS |
+\end_layout
+
+\begin_layout Plain Layout
+
+            SPI_4PIN_MODE |
+\end_layout
+
+\begin_layout Plain Layout
+
+            SPI_TURBO_OFF |
+\end_layout
+
+\begin_layout Plain Layout
+
+            SPI_CS_ACTIVEHIGH |
+\end_layout
+
+\begin_layout Plain Layout
+
+			SPI_WL_8));
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    //
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Enable SPI for communication
+\end_layout
+
+\begin_layout Plain Layout
+
+    //
+\end_layout
+
+\begin_layout Plain Layout
+
+    MAP_SPIEnable(GSPI_BASE);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // enable internal SPI CS to satisfy SPI API
+\end_layout
+
+\begin_layout Plain Layout
+
+	// using GPIOP CS instead,
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+	// to work with writeCommand() and writeData()
+\end_layout
+
+\begin_layout Plain Layout
+
+    MAP_SPICSEnable(GSPI_BASE);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A few specifics about this SPI configuration:
+ we use 
+\family typewriter
+SPI_SUB_MODE_3 
+\family default
+(line 16) to ignore the default chip select and ensure we are using the chip select defined in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:Checkoff-1-PinMux"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+.
+ We also enable the interna SPI pin select,
+ which is defined at pin 50 (line 31).
+ This ensures that the internal SPI API plays nice;
+ we found that if it was not enabled,
+ even though it remains unused,
+ functions like 
+\family typewriter
+MAP_SPITransfer()
+\family default
+will hang up and never return from their calls,
+ probably because these SPI read/write functions are expecting Pin 50 to be enabled.
+ If we enable it behind the scenes,
+ we can proceed with our CS config at Pin 2.
+\end_layout
+
+\begin_layout Standard
+From there,
+ we call 
+\family typewriter
+Adafruit_Init()
+\family default
+ to supply start-up commands to the OLED and turn it on.
+ This mostly consists of calling 
+\family typewriter
+writeCommand()
+\family default
+ and 
+\family typewriter
+writeData()
+\family default
+,
+ which we are tasked with developing.
+ The relevant code is below:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C,numbers=right,numberstyle={\tiny},basicstyle={\tiny}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+#define DC_PIN      0x2   // GPIO_PIN_1 on GPIOA1_BASE
+\end_layout
+
+\begin_layout Plain Layout
+
+#define RESET_PIN   0x4   // GPIO_PIN_2 on GPIOA1_BASE
+\end_layout
+
+\begin_layout Plain Layout
+
+#define OLED_CS_PIN 0x8   // GPIO_PIN_3 on GPIOA1_BASE
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// Macros for controlling pins (short form)
+\end_layout
+
+\begin_layout Plain Layout
+
+#define DC_COMMAND()    GPIOPinWrite(GPIOA1_BASE,
+ DC_PIN,
+ 0)          // DC = LOW for commands
+\end_layout
+
+\begin_layout Plain Layout
+
+#define DC_DATA()       GPIOPinWrite(GPIOA1_BASE,
+ DC_PIN,
+ DC_PIN)     // DC = HIGH for data
+\end_layout
+
+\begin_layout Plain Layout
+
+#define CS_ENABLE()     GPIOPinWrite(GPIOA1_BASE,
+ OLED_CS_PIN,
+ 0)     // CS = LOW to enable
+\end_layout
+
+\begin_layout Plain Layout
+
+#define CS_DISABLE()    GPIOPinWrite(GPIOA1_BASE,
+ 	// CS = HIGH to disable
+\end_layout
+
+\begin_layout Plain Layout
+
+					OLED_CS_PIN,
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+					ED_CS_PIN) 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+//*****************************************************************************
+\end_layout
+
+\begin_layout Plain Layout
+
+void writeCommand(unsigned char c) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    // dummy char to satisfy MISO line
+\end_layout
+
+\begin_layout Plain Layout
+
+    unsigned char dummy;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Data Command Pin should be low for commands,
+ CS is low to enable
+\end_layout
+
+\begin_layout Plain Layout
+
+    DC_COMMAND();
+\end_layout
+
+\begin_layout Plain Layout
+
+    CS_ENABLE();
+ // Enable LOW
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // 0 disables automatic CS control;
+ use manual GPIO CS
+\end_layout
+
+\begin_layout Plain Layout
+
+    MAP_SPITransfer(GSPI_BASE,
+ &c,
+ &dummy,
+ 1,
+ 0);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    CS_DISABLE();
+ // Disable HIGH
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+//*****************************************************************************
+\end_layout
+
+\begin_layout Plain Layout
+
+// See writeCommand for explanatory comments
+\end_layout
+
+\begin_layout Plain Layout
+
+void writeData(unsigned char c) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    // dummy char to satisfy MISO line
+\end_layout
+
+\begin_layout Plain Layout
+
+    unsigned char dummy;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // DC is set to high for Data
+\end_layout
+
+\begin_layout Plain Layout
+
+    DC_DATA();
+\end_layout
+
+\begin_layout Plain Layout
+
+    CS_ENABLE();
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // transfer data from SPI line
+\end_layout
+
+\begin_layout Plain Layout
+
+    MAP_SPITransfer(GSPI_BASE,
+ &c,
+ &dummy,
+ 1,
+ 0);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // disable chip select when transfer is complete
+\end_layout
+
+\begin_layout Plain Layout
+
+    CS_DISABLE();
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For lines 1-11,
+ we have defined some simple macros to make the two functions more readable.
+ In short:
+ 
+\family typewriter
+DC_COMMAND()
+\family default
+ sets the DC pin to low,
+ 
+\family typewriter
+DC_DATA()
+\family default
+ sets the DC pin to high,
+ 
+\family typewriter
+CS_ENABLE()
+\family default
+ enables our chip select,
+ and 
+\family typewriter
+CS_DISABLE()
+\family default
+ disables our chip select.
+ With this in mind,
+ 
+\family typewriter
+writeCommand()
+\family default
+:
+\end_layout
+
+\begin_layout Enumerate
+Sets the DC to low (for Command type to the MOSI line)
+\end_layout
+
+\begin_layout Enumerate
+Enables CS to low (indicating data is being transmitted)
+\end_layout
+
+\begin_layout Enumerate
+Sends the 
+\family typewriter
+char c
+\family default
+ via SPI across the MOSI line
+\end_layout
+
+\begin_layout Enumerate
+Disables CS to high (indicating data is no longer being transmitted).
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+writeData()
+\family default
+ is similar:
+\end_layout
+
+\begin_layout Enumerate
+Sets the DC to high (for Data type to the MOSI line)
+\end_layout
+
+\begin_layout Enumerate
+Enables CS to low
+\end_layout
+
+\begin_layout Enumerate
+Sends the 
+\family typewriter
+char c
+\family default
+ via SPI across the MOSI line
+\end_layout
+
+\begin_layout Enumerate
+Disables CS to high
+\end_layout
+
+\begin_layout Standard
+This specific protocol respects SPI and write commands and data to the OLED.
+ This is used extensively for preparing to turn on the OLED and draw pixels on it's display.
+ Fortunately the API takes care of the rest of the implementation details,
+ and we need not concern ourself with the internals for this report.
+\end_layout
+
+\begin_layout Standard
+We can now focus on implementing the OLED output.
+ After it is initialized,
+ we use the following logic to complete the checkoff:
+\end_layout
+
+\begin_layout Itemize
+First,
+ printing the full character set as defined in 
+\family typewriter
+glcdfont.h
+\family default
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C,numbers=right,basicstyle={\tiny}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+        // Print full character set
+\end_layout
+
+\begin_layout Plain Layout
+
+        int i = 0;
+ int x = 0;
+ int y = 0;
+\end_layout
+
+\begin_layout Plain Layout
+
+        bool finished = false;
+\end_layout
+
+\begin_layout Plain Layout
+
+        for (x = 0;
+ x < SSD1351WIDTH && !finished;
+ x += PIXEL_WIDTH) {
+\end_layout
+
+\begin_layout Plain Layout
+
+            for (y = 0;
+ y < SSD1351HEIGHT;
+ y += PIXEL_WIDTH) {
+\end_layout
+
+\begin_layout Plain Layout
+
+                if (i < GLCD_FONT_SIZE) {
+\end_layout
+
+\begin_layout Plain Layout
+
+                    drawChar(x,
+ y,
+ font[i++],
+ 1,
+ 1,
+ 1);
+\end_layout
+
+\begin_layout Plain Layout
+
+                }
+\end_layout
+
+\begin_layout Plain Layout
+
+                else {
+\end_layout
+
+\begin_layout Plain Layout
+
+                    finished = true;
+\end_layout
+
+\begin_layout Plain Layout
+
+                    break;
+\end_layout
+
+\begin_layout Plain Layout
+
+                }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+            }
+\end_layout
+
+\begin_layout Plain Layout
+
+        }
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We loop through the entire ASCII font array,
+ using 
+\family typewriter
+PIXEL_WIDTH
+\family default
+ in our iterations to ensure the characters are sufficiently large spaced out (otherwise they would overlap).
+ 
+\family typewriter
+drawChar()
+\family default
+ is sufficient for our needs to draw each of these,
+ and that is about the extent of this implementation.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Quotes eld
+\end_inset
+
+Hello,
+ world!
+\begin_inset Quotes erd
+\end_inset
+
+ is pretty similar,
+ and simpler.
+ We just need to account for the null termination to end the looping.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C,numbers=right,basicstyle={\tiny}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+        // Print hello world
+\end_layout
+
+\begin_layout Plain Layout
+
+        unsigned char greeting[] = "Hello world!";
+\end_layout
+
+\begin_layout Plain Layout
+
+        i = 0;
+ x = 0;
+ y = 0;
+\end_layout
+
+\begin_layout Plain Layout
+
+        while (greeting[i] != '
+\backslash
+0') {
+\end_layout
+
+\begin_layout Plain Layout
+
+            drawChar(x,
+ y,
+ greeting[i],
+ 1,
+ 1,
+ 1);
+\end_layout
+
+\begin_layout Plain Layout
+
+            x += PIXEL_WIDTH;
+\end_layout
+
+\begin_layout Plain Layout
+
+            i++;
+\end_layout
+
+\begin_layout Plain Layout
+
+        }
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Printing the 8 bands of different colors involves using a 
+\family typewriter
+colors[]
+\family default
+ array (colors are 6-digit hexadecimal,
+ interpreted RGB from left to right in their respective [0,255] range).
+ We can then invoke the width and height of the OLED to evenly partition 8 bands,
+ and draw the lines at each partition,
+ assigning a different color to each.
+ 
+\family typewriter
+drawFastHLine()
+\family default
+ works for each horizontal line in an iterative loop,
+ and 
+\family typewriter
+drawFastVLine()
+\family default
+is good for the vertical lines.
+ We increment the respective axis for each by gaps of 
+\family typewriter
+SSD1351HEIGH / num_band
+\family default
+,
+ and hold the other constant,
+ achieving the intended functionality.
+\end_layout
+
+\begin_layout Itemize
+In between each drawing,
+ we call 
+\family typewriter
+UtilsDelay(DRAW_DELAY)
+\family default
+followed by 
+\family typewriter
+fillScreen(WHITE)
+\family default
+,
+ which allows for an approximate 1.5 second interval in between each drawing,
+ and the screen to refresh to white in preparation for the next one (otherwise all of these drawings will overlap!).
+ The remaining checkoff drawings are drawn;
+ these are pretty self-explanatory,
+ since they are already implemented for us.
+ Checkoff 1 is complete!
+\end_layout
+
+\begin_layout Subsection
+Verifying SPI waveforms using a Saleae logic
+\end_layout
+
+\begin_layout Standard
+Now comes the more engaging part.
+ By plugging in the Saleae Logic Analyzer to select pins,
+ we can see what their signals are.
+ We did this at the very start of the 
+\family typewriter
+Adafruit_init()
+\family default
+ for a few seconds,
+ which looks like so...
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C,numbers=right,basicstyle={\tiny}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void Adafruit_Init(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  volatile unsigned long delay;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  // Using GPIO Pin 01 for RESET
+\end_layout
+
+\begin_layout Plain Layout
+
+  GPIOPinWrite(GPIOA1_BASE,
+ 0x4,
+ 0);	// RESET = RESET_LOW
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  UtilsDelay(80000);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  GPIOPinWrite(GPIOA1_BASE,
+ 0x4,
+ 0x4);	// RESET = RESET_HIGH
+\end_layout
+
+\begin_layout Plain Layout
+
+  UtilsDelay(80000);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	// Initialization Sequence
+\end_layout
+
+\begin_layout Plain Layout
+
+  writeCommand(SSD1351_CMD_COMMANDLOCK);
+  // set command lock
+\end_layout
+
+\begin_layout Plain Layout
+
+  writeData(0x12);
+\end_layout
+
+\begin_layout Plain Layout
+
+  writeCommand(SSD1351_CMD_COMMANDLOCK);
+  // set command lock
+\end_layout
+
+\begin_layout Plain Layout
+
+  writeData(0xB1);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  writeCommand(SSD1351_CMD_DISPLAYOFF);
+  		// 0xAE
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With this in mind,
+ we should expect to see the values from the 
+\family typewriter
+writeCommand()
+\family default
+ and 
+\family typewriter
+writeData()
+\family default
+ calls be reflected in our signals.
+ Let's look:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Adafruit_init()-SPI-signals"
+
+\end_inset
+
+Adafruit_init()
+\family default
+ SPI signals
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/jacob/ucd/wq26/eec172/labs/lab2-pt1/spi_signals.png
+	width 10cm
+	height 2cm
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+Here,
+ we see 4 bytes being read from the MOSI line.
+ Each 
+\begin_inset Quotes eld
+\end_inset
+
+clock burst
+\begin_inset Quotes erd
+\end_inset
+
+ (when the serial clock line is oscillating) is when data is being read;
+ each bit for each byte is read on the rising edge of the clock.
+ It is also apparent this is a byte,
+ since each burst consists of 8 rising edges.
+ The 
+\family typewriter
+DC
+\family default
+ is low when it is a 
+\family typewriter
+writeCommand()
+\family default
+,
+ and high when it is is a 
+\family typewriter
+dataCommand()
+\family default
+,
+ which aligns with how the OLED works.
+ Lastly,
+ the reset,
+ is toggled low,
+ then high;
+ at this point in time,
+ the Adafruit is alive and interpreting received commands.
+ We don't see the chip select here (since we only have 4 channels to work wtih),
+ but it looks good too:
+ it is high when there is writes to perform,
+ and low when there is not.
+ The following table breaks down the value we're receiving for each clock burst,
+ mapped to each respective write function:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement document
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+First 4 write call values in 
+\family typewriter
+Adafruit_init()
+\family default
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Command
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Argument
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Binary
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+writeCommand(SSD1351_CMD_COMMANDLOCK)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xFD
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11111101
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+writeData(0x12)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00010010
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+writeCommand(SSD1351_CMD_COMMANDLOCK)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xFD
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11111101
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+writeData(0xB1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xB1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10110001
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+Breaking down the binary,
+ if we compare these values (from top to bottom) to the clock bursts (from left to right),
+ we can see they are identical.
+ This is how the SPI protocol is relaying data to the OLED.
+ The other signals,
+ as mentioned,
+ instigate how to read the bits,
+ and when it is a command byte or a data byte.
+\end_layout
+
+\begin_layout Subsection
+Controlling the BMA222 accelerometer with I2C
+\end_layout
+
+\begin_layout Standard
+In this checkoff,
+ we use 
+\family typewriter
+i2c_demo
+\family default
+ to make sure that we can communicate with the accelerometer,
+ and determine if we are getting good tilt values.
+ We don't write any code,
+ we simply run some commands in the UART console to inspect the values and verify it against our Saleae signals.
+ The two commands we issued are as follows:
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+readreg 0x18 0x3 1
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+readreg 0x18 0x5 1
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+0x18
+\family default
+ is the I2C device address reserved for the accelerometer.
+ 
+\family typewriter
+0x3
+\family default
+ is the register at this address where the current x-axis coordinate resides.
+ 
+\family typewriter
+0x5
+\family default
+ is where the y-axis coordinate resides.
+ The 
+\family typewriter
+1
+\family default
+ is the read length,
+ indicating we extract 1 byte (since the second argument is an offset,
+ and we could extend further if we wanted to).
+\end_layout
+
+\begin_layout Standard
+Now,
+ let's see what our I2C signals look like when we run these in the UART terminal.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:BMA-I2C-Signals"
+
+\end_inset
+
+BMA222 I2C Signals
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Float figure
+placement document
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+X-Axis Signal
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/jacob/ucd/wq26/eec172/labs/lab2-pt2/pics/x_axis_waveform_zoomed_in.png
+	width 8cm
+	height 3cm
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Float figure
+placement document
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Y-Axis Signal
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/jacob/ucd/wq26/eec172/labs/lab2-pt2/pics/y_axis_waveform_zoomed_in.png
+	width 8cm
+	height 3cm
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+The table below is a break down of what the SDA line is transmitting.
+ As expected,
+ the bits are read on the rising edge of the SCL clock:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\family typewriter
+readreg
+\family default
+ values
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+small
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Float table
+placement document
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+X-Axis
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+resizebox{0.4
+\backslash
+textwidth}{!}{%
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="3" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Device Address (Write)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Register Pointer
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Device Address (Read)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Data Byte
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hex
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x30
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x03
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x31
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x3F
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Binary
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00110000
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00000011
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00110001
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00111111
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Float table
+placement document
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Y-Axis
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+resizebox{0.4
+\backslash
+textwidth}{!}{%
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="3" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Device Address (Write)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Register Pointer
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Device Address (Read)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Data Byte
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hex
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x30
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x05
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x31
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x28
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Binary
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00110000
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00000101
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00110001
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+00101000
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+So what's happening here?
+ The device address is 
+\family typewriter
+0x18
+\family default
+,
+ our original address,
+ shifted to the left 1 bit.
+ Why?
+ It is actually 7-bit representation due to it actually being signed,
+ so on the line,
+ an extra 8th bit is added at the end.
+ This is a 
+\family typewriter
+0
+\family default
+ if it is a write,
+ and a 
+\family typewriter
+1
+\family default
+ if it is a read.
+ The register pointer is where we are reading from,
+ which corresponds to the x and y axis register.
+ Finally,
+ the data byte is what was actually read.
+\end_layout
+
+\begin_layout Standard
+If we piece this together and read the binary from left to right across the SDA,
+ we can see it is accurate.
+ The data bytes themselves,
+ when converted to decimal,
+ are -63 for X and 40 for Y.
+ The sign indicates the angle on a given plane,
+ and the value the magnitude.
+ X is likely side-to-side,
+ and Y forward-and-backward (when looking at the MCU from a top-down perspective,
+ longways).
+ This is pretty helpful for our next checkoff!
+\end_layout
+
+\begin_layout Subsection
+Sliding Ball
+\end_layout
+
+\begin_layout Standard
+Everything comes to together to make pixels move on the screen with the magic of microcontrollers.
+ First,
+ our pins for this implementation,
+ which requires some changes since we have reserved pins for I2C (for the accelerometer):
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:Checkoff-4-PinMux"
+
+\end_inset
+
+Checkoff 4 PinMux Config
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="10" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+OLED Signal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MCU Interface
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Physical Pin
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MOSI (SI)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SPI_DOUT (MOSI)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SCK (CL)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SPI_CLK (SCLK)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+DC
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GPIO
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+64
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Reset (R)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GPIO
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+OLEDCS (CS)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GPIO
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+N/A
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+I2C_SCL
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+N/A
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+I2C_SDA
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Vin (+)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3.3 V
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+VCC
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GND (G)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GND
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Anf that concluGND
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+After shifting around some pins,
+ we're ready to get started.
+ All of the SPI configuration and OLED initialization is effectively the same,
+ with the exception of changing the pin values being used (for Reset and OLEDCS).
+ We also need to initialize I2C,
+ which is simply calling 
+\family typewriter
+I2C_IF_Open(I2C_MASTER_MODE_FST)
+\family default
+.
+ Now,
+ the code which makes the pitching ball is below.
+ Let's walk through it:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C,numbers=right,basicstyle={\tiny}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+    // registers for Accelerometer values (I2C SDA and SLA respectively)
+\end_layout
+
+\begin_layout Plain Layout
+
+    unsigned char reg_x = 0x03,
+ reg_y = 0x05;
+\end_layout
+
+\begin_layout Plain Layout
+
+    // int8_t to respect 2's complement
+\end_layout
+
+\begin_layout Plain Layout
+
+    int8_t x_raw,
+ y_raw;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // curb acceleration speed
+\end_layout
+
+\begin_layout Plain Layout
+
+    float speed = 0.1;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Initial position:
+ center of screen
+\end_layout
+
+\begin_layout Plain Layout
+
+    int x = SSD1351WIDTH / 2,
+ y = SSD1351HEIGHT / 2;
+\end_layout
+
+\begin_layout Plain Layout
+
+    // achieves a radius of about 2 pixels
+\end_layout
+
+\begin_layout Plain Layout
+
+    int radius = 2;
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Run accelerometer circle on Adafruit OLED in a loop
+\end_layout
+
+\begin_layout Plain Layout
+
+    fillScreen(WHITE);
+\end_layout
+
+\begin_layout Plain Layout
+
+    fillCircle(x,
+ y,
+ radius,
+ RED);
+\end_layout
+
+\begin_layout Plain Layout
+
+    while(1)
+\end_layout
+
+\begin_layout Plain Layout
+
+    {
+\end_layout
+
+\begin_layout Plain Layout
+
+        // refresh x,y variables based on accelerometer 
+\end_layout
+
+\begin_layout Plain Layout
+
+		// read registers,
+ then write to var
+\end_layout
+
+\begin_layout Plain Layout
+
+        I2C_IF_Write(0x18,
+ &reg_x,
+ 1,
+ 0);
+\end_layout
+
+\begin_layout Plain Layout
+
+        I2C_IF_Read(0x18,
+ (unsigned char *)&x_raw,
+ 1);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        I2C_IF_Write(0x18,
+ &reg_y,
+ 1,
+ 0);
+\end_layout
+
+\begin_layout Plain Layout
+
+        I2C_IF_Read(0x18,
+ (unsigned char *)&y_raw,
+ 1);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        // Update position
+\end_layout
+
+\begin_layout Plain Layout
+
+        int next_x = x + (int)(x_raw * speed);
+\end_layout
+
+\begin_layout Plain Layout
+
+        int next_y = y + (int)(y_raw * speed);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        // Bound to screen edges
+\end_layout
+
+\begin_layout Plain Layout
+
+        if(next_x < radius) next_x = radius;
+\end_layout
+
+\begin_layout Plain Layout
+
+        if(next_x > SSD1351WIDTH - radius) next_x = SSD1351WIDTH - radius;
+\end_layout
+
+\begin_layout Plain Layout
+
+        if(next_y < radius) next_y = radius;
+\end_layout
+
+\begin_layout Plain Layout
+
+        if(next_y > SSD1351HEIGHT - radius) next_y = SSD1351HEIGHT - radius;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        // redraw if ball needs to move
+\end_layout
+
+\begin_layout Plain Layout
+
+        if (next_x != x || next_y != y) {
+\end_layout
+
+\begin_layout Plain Layout
+
+            // erase old ball
+\end_layout
+
+\begin_layout Plain Layout
+
+            fillCircle(x,
+ y,
+ radius,
+ WHITE);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+            // Update to new coordinates
+\end_layout
+
+\begin_layout Plain Layout
+
+            x = next_x;
+\end_layout
+
+\begin_layout Plain Layout
+
+            y = next_y;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+            // new ball
+\end_layout
+
+\begin_layout Plain Layout
+
+            fillCircle(x,
+ y,
+ radius,
+ RED);
+\end_layout
+
+\begin_layout Plain Layout
+
+        }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        // introduce slight delay for less jitter
+\end_layout
+
+\begin_layout Plain Layout
+
+        UtilsDelay(80000);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+To keep the ball moving,
+ we enclose the main logic in a while loop.
+ But on line 15,
+ we start the position of the ball in the very center of the screen.
+\end_layout
+
+\begin_layout Enumerate
+Upon entering the loop,
+ we write to the I2C registers asociaed with our X and Y value,
+ then we read from it.
+ This gives us the new tilt values in 2D space (we are ignoring the Z axis since the OLED is a flat screen).
+\end_layout
+
+\begin_layout Enumerate
+With this value,
+ we update the position,
+ the new value is the current value plus the raw value extracted from the I2C registers;
+ we multiply the raw value with a float constant to carefully control the speed of movement (smaller scalar value means less change!),
+ on Lines 27 and 28.
+\end_layout
+
+\begin_layout Enumerate
+These new values are then compared against the width and height of the screen,
+ on Lines 31-34.
+ This ensures the ball is not allowed to go 
+\begin_inset Quotes eld
+\end_inset
+
+off
+\begin_inset Quotes erd
+\end_inset
+
+ the screen (more accurately,
+ experience undefined behavior in the ball drawing function).
+\end_layout
+
+\begin_layout Enumerate
+Lastly,
+ we check if the ball needs to move on Line 37.
+ If the new x or y differs from the previous x or y,
+ we start by filling the pixels with white (where the ball used to be).
+ We update the coordinates,
+ then we render a new ball at these coordinates.
+ The illuson of movement is complete!
+\end_layout
+
+\begin_layout Enumerate
+Last,
+ we call a delay command to have slightly less jitter;
+ we don't want the input to be too responsive between iterations.
+\end_layout
+
+\begin_layout Standard
+And that concludes checkoff 4!
 \end_layout
 
 \begin_layout Section
