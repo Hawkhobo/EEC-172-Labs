@@ -452,151 +452,149 @@ GUI software to display signals from the Saleae Logic Analyzer across 4 channels
  and interpret data based off analyzer profiles.
 \end_layout
 
-\begin_layout Theorem
-\begin_inset Argument 1
-status open
-
-\begin_layout Plain Layout
-Theorem name
-\end_layout
-
-\end_inset
-
-For a named theorem or theorem-like environment you need to insert the name through 
-\family sans
-Insert\SpecialChar menuseparator
-Short Title
-\family default
-,
- as done here.
-\end_layout
-
-\begin_layout Lemma
-If you don't want a theorem or lemma name don't add one.
-\end_layout
-
-\begin_layout Proof
-And here's the proof!
-\end_layout
-
 \begin_layout Section
 Goals
 \end_layout
 
 \begin_layout Standard
-\begin_inset Float figure
-placement htbp
-alignment document
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\align center
-
-\family sans
-A single column figure goes here
+There are four checkoff tasks to complete associated with this lab section.
 \end_layout
 
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Captions go 
-\emph on
-under
-\emph default
- the figure
+\begin_layout Subsection
+Implement OLED Interface Using SPI
 \end_layout
 
+\begin_layout Itemize
+Arguably the most involved checkoff in this lab,
+ this involves setting up the SPI communication protocol to write commands and their subsequent data to the OLED display,
+ and implementing the API provided by Adafruit to draw various shapes on the display (as well as producing the coding framework needed to use some of these API calls effectively).
+\end_layout
+
+\begin_layout Itemize
+One need to carefully set up the SPI pins,
+ and then use the tools which the SDK provides to create functions that allow for the OLED API to be implemented;
+ namely completing 
+\family typewriter
+writeCommand()
+\family default
+ and 
+\family typewriter
+writeData()
+\family default
+.
+ This happens in 
+\family typewriter
+Adafruit_OLED.c
+\family default
+.
+ More on this in Methods!
+\end_layout
+
+\begin_layout Itemize
+Turning our attention to 
+\family typewriter
+main.c
+\family default
+,
+ the systems programmer needs to ensure the SPI is configured properly;
+ this ended up being quite touchy,
+ and required careful consideration of the values that we could edit.
+\end_layout
+
+\begin_layout Itemize
+Lastly,
+ a main 
+\family typewriter
+while(1)
+\family default
+ loop needs to be set up to invoke the appropriate drawing functions.
+\end_layout
+
+\begin_layout Itemize
+The main lessons from this checkoff consists of working around the software inconviences of Texas Instruments SDK's and open-source firmware.
+ Getting this program working requires a careful touch,
+ which will be detailed in methods.
+ This lab works as a good primer for the kind of attention to detail required of embedded systems design.
+ It also helps to explore the low-level requirements of working with peripheral devices like the OLED,
+ and the kind of necessities needed for supporting the functionality the programmer desires,
+ both in terms of software and hardware.
+\end_layout
+
+\begin_layout Subsection
+Verifying SPI waveforms using a Saleae logic
+\end_layout
+
+\begin_layout Itemize
+This lab introduces the Saleae Logic Analyzer,
+ and it's corresponding software Saleae Logic 2.
+ This is an important debugging tool in the arsenal of an embedded systems programmer,
+ allowing for easy verification of signal traces for up to 4 pin-outs (organized by 4 channels in the Saleae Logic 2).
+ 
+\end_layout
+
+\begin_layout Itemize
+Checkoff 2 also helps understand the analog component underpinning the software we have written,
+ and contextualizes not only what our software is doing,
+ but how the SPI protocol is working.
+ We get a feel for what a serial clock should look like,
+ what the MOSI (data line) should look like for the OLED,
+ as well as how the DC,
+ Reset,
+ and CS pins shThould behave.
+ The analyzer provides an incredibly powerful snapshot of all of this working in concert,
+ and how different systems can communicte with each other.
+\end_layout
+
+\begin_layout Subsection
+Controlling the BMA222 accelerometer with I2C
+\end_layout
+
+\begin_layout Itemize
+In this checkoff,
+ we get familiar with using the on-board BMA222 accelerometer to determine the orientation of the MCU,
+ and eventually,
+ use it's output to produce interesting results with peripheral devices.
+\end_layout
+
+\begin_layout Itemize
+The checkoff consists of running the 
+\family typewriter
+i2c_demo
+\family default
+,
+ and verifying the output from the registers defined by the BMA222 (indicating the tilt of the MCU).
+ The SDA and SDL pins are used to interact with the I2C protocol,
+ and we use the UART protocol to type commands in the terminal to read the values of specific registers (indicating the accelerometer axis values at the time of printout).
+\end_layout
+
+\begin_layout Subsection
+Sliding Ball
+\end_layout
+
+\begin_layout Itemize
+In Checkoff 4,
+ we bring it all together,
+ combining the BMA222 with the OLED,
+ enabling a ball to move on the screen.
+\end_layout
+
+\begin_layout Itemize
+This checkoff requires that you extract the relevant values from the BMA222 registers (x and y),
+ and use them in a formula to simulate a 
+\begin_inset Quotes eld
 \end_inset
 
-
-\end_layout
-
+natural acceleration
+\begin_inset Quotes erd
 \end_inset
 
-
-\begin_inset Float table
-placement htbp
-alignment document
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-Table captions go 
-\emph on
-above
-\emph default
- the table
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\align center
-\begin_inset Tabular
-<lyxtabular version="3" rows="2" columns="2">
-<features tabularvalignment="middle">
-<column alignment="center" valignment="top" width="0pt">
-<column alignment="center" valignment="top" width="0pt">
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-delete
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-this
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-example
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-table
-\end_layout
-
-\end_inset
-</cell>
-</row>
-</lyxtabular>
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
+ increase for the central coordinate points of a small circle on the OLED display.
+ It requires careful consideration of how these values are used as scalar multiples;
+ their 2's complement nature also needs to be carefully handled (signed versus unsigned integers).
+ Ultimately,
+ this checkoff teaches careful data type application and conditional control of math operations in the context of embedded systems,
+ allowing for fine-tuned coordination of pixels on the OLED!
+ Pretty neat.
 \end_layout
 
 \begin_layout Section
