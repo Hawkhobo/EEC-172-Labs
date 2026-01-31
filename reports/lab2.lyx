@@ -99,7 +99,7 @@
 \papersides 1
 \paperpagestyle default
 \tablestyle default
-\tracking_changes false
+\tracking_changes true
 \output_changes false
 \change_bars false
 \postpone_fragile_content false
@@ -175,7 +175,7 @@ Serial Interfacing with SPI and I2C
 \end_layout
 
 \begin_layout Author
-Jacob Feenstra and Chun Ho Chen
+Jacob Feenstra and Chun-Ho Chen
 \end_layout
 
 \begin_layout Page headings
