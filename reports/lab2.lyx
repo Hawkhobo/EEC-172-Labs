@@ -190,6 +190,50 @@ Checkoff
 \end_layout
 
 \begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Checkoff Sheet
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename checkoff2.png
+	width 5cm
+	height 5cm
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
 Lab 2 requirements...
 \end_layout
 
@@ -200,10 +244,6 @@ Your lab report should include:
 \begin_layout Enumerate
 A soft-copy of your well-written,
  well-commented code for Task 4
-\end_layout
-
-\begin_layout Standard
-Include your names in the header comments of the file containing your main program.
 \end_layout
 
 \begin_layout Standard
@@ -235,19 +275,51 @@ Introduction
 \end_layout
 
 \begin_layout Standard
-an overview of the procedures conducted in the lab
+In this lab,
+ we familiarized ourselves with using communication protocols (SPI and I2C,
+ respectively) to communicate to peripheral devices with our CC3200 Microntroller Unit (MCU).
+ 
 \end_layout
 
-\begin_layout Subsection
-subsection
+\begin_layout Enumerate
+We used the SPI protocol to interact with an Adafruit SSD1351 OLED Digital Display (OLED),
+ and perform drawing operations on it's screen.
+ Using the general-purpose pins provided by the MCU,
+ we can bind the signals defined by the SPI protocol and initiate communication via the SPI software development kit API.
 \end_layout
 
-\begin_layout Subsection
-another subsection
+\begin_layout Enumerate
+Then,
+ we introduce I2C to extract acceleration data in 3 dimensions,
+ from three registers defined by the MCU's on-board BMA222 Accelerometer.
+ We focus on the x and y dimensions,
+ determining the tilt & angle of the MCU in 8-bit 2's complement form,
+ from two respective registers.
+\end_layout
+
+\begin_layout Enumerate
+Combining our ability to communicate with the OLED and determine accelerometer information,
+ we can tilt the accelerometer and get a velocity response from drawn pixels on the OLED.
+ Mainly,
+ we move a circle around the OLED display.
+ More information on how this works will be included in subsequent sections.
+\end_layout
+
+\begin_layout Standard
+In completing this lab,
+ we effectively learn how to work with MCU-supported communication protocols,
+ and get it to do exciting things with peripheral devices,
+ as well as utilize on-board MCU components to introduce additional functionality to these peripheral device programs that we otherwise wouldn't have.
 \end_layout
 
 \begin_layout Section
 Background
+\end_layout
+
+\begin_layout Standard
+Modules,
+ hardware,
+ and software tools used are as follows.
 \end_layout
 
 \begin_layout Theorem
@@ -316,7 +388,7 @@ under
 
 
 \begin_inset Float table
-placement H
+placement htbp
 alignment document
 wide false
 sideways false
