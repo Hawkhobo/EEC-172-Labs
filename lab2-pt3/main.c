@@ -1,4 +1,9 @@
 //*****************************************************************************
+// Lab 2 - Checkoff 4
+// Jacob Feenstra and Chun Ho Chen
+//*****************************************************************************
+//
+//*****************************************************************************
 //
 // Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
 // 
@@ -125,6 +130,7 @@ void SPIconfig()
     //
     // Configure SPI interface
     //
+    // Using Mode 3; only interested in MOSI, CS, and SCLK for SPI
     MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
                      SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_3,
                      (SPI_SW_CTRL_CS |
@@ -138,7 +144,7 @@ void SPIconfig()
     //
     MAP_SPIEnable(GSPI_BASE);
 
-    // enable internal SPI CS to satisfy SPI API; using GPIOP CS instead
+    // enable internal SPI CS to satisfy SPI API;note we are using GPIOP CS instead to work with writeCommand() and writeData()
     MAP_SPICSEnable(GSPI_BASE);
 
 }
@@ -211,23 +217,24 @@ void main()
     // Initialize OLED display
     Adafruit_Init();
 
-    // registers for Accelerometer values
+    // registers for Accelerometer values (I2C SDA and SLA respectively)
     unsigned char reg_x = 0x03, reg_y = 0x05;
     // raw x and y values should be int8_t to respect 2's complement (include negatives)
     int8_t x_raw, y_raw;
 
+    // curb acceleration speed
     float speed = 0.1;
 
     // Initial position: center of screen
     int x = SSD1351WIDTH / 2, y = SSD1351HEIGHT / 2;
-    // Radius should be about 4 pixels
+    // achieves a radius of about 2 pixels
     int radius = 2;
     // Run accelerometer circle on Adafruit OLED in a loop
     fillScreen(WHITE);
     fillCircle(x, y, radius, RED);
     while(1)
     {
-        // refresh x,y variables based on accelerometer (read registers, write to var)
+        // refresh x,y variables based on accelerometer (read registers, then write to var)
         I2C_IF_Write(0x18, &reg_x, 1, 0);
         I2C_IF_Read(0x18, (unsigned char *)&x_raw, 1);
 
@@ -257,6 +264,7 @@ void main()
             fillCircle(x, y, radius, RED);
         }
 
+        // introduce slight delay for less jitter
         UtilsDelay(80000);
 
     }
