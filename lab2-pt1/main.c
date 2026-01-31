@@ -1,4 +1,8 @@
 //*****************************************************************************
+// Lab 2 - Checkoff 1 & 2
+// Jacob Feenstra and Chun Ho Chen
+//*****************************************************************************
+//*****************************************************************************
 //
 // Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
 // 
@@ -95,8 +99,10 @@ extern uVectorEntry __vector_table;
 #endif
 
 #define GLCD_FONT_SIZE 1270
+// delay sweet spot: about 2 seconds
 #define DRAW_DELAY 24e6
 #define WHITE 0xFFFF
+// pixel width for spacing of ASCII characters on Adafruit display
 #define PIXEL_WIDTH 8
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- End
@@ -123,6 +129,7 @@ void SPIconfig()
     //
     // Configure SPI interface
     //
+    // Using Mode 3; only interested in MOSI, CS, and SCLK for SPI
     MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
                      SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_3,
                      (SPI_SW_CTRL_CS |
@@ -136,7 +143,7 @@ void SPIconfig()
     //
     MAP_SPIEnable(GSPI_BASE);
 
-    // enable internal SPI CS to satisfy SPI API; using GPIOP CS instead
+    // enable internal SPI CS to satisfy SPI API;not we are using GPIOP CS instead to work with writeCommand() and writeData()
     MAP_SPICSEnable(GSPI_BASE);
 
 }
@@ -268,6 +275,8 @@ void main()
             drawFastVLine(x, y, SSD1351HEIGHT, colors[i]);
             i++;
         }
+
+        // Run requested Adafruit API printout fucntions. See Adafruit_OLED.c for details on each
 
         UtilsDelay(DRAW_DELAY);
         fillScreen(WHITE);
