@@ -322,6 +322,53 @@ Modules,
  and software tools used are as follows.
 \end_layout
 
+\begin_layout Subsection
+Modules
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+spi_demo:
+ 
+\family default
+Texas Instruments CCS project that demonstrates how to use SPI signals for simple UART communication.
+ This module is co-opted and used for all parts of the lab when sending data to the OLED.
+ Note this also includes usage for the MCU as both a master & slave:
+ we leave just the code for master,
+ since that is all that the MCU will be doing.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+i2c_demo:
+ 
+\family default
+Texas Instruments CCS project that demonstrates how to use I2C signals for simple reading operations with the BMA222 accelerometer.
+ Namely,
+ using the UART terminal to print out the changing accelerometer axis values (x,
+ y,
+ and z) when the MCU is rotated in physical space.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Adafruit SSD1351 Open Source Graphics Library:
+ 
+\family default
+Abridged from the Adafruit graphics library,
+ provides an API to write commands (and their subsequent data) to the OLED.
+ Includes various functions to draw complex shapes on the digital display.
+ This library is used extensively in this lab & modified.
+ More information on the modifications will be detailed.
+\end_layout
+
+\begin_layout Subsection
+Hardware
+\end_layout
+
 \begin_layout Theorem
 \begin_inset Argument 1
 status open
