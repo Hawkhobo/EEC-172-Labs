@@ -232,43 +232,6 @@ Checkoff Sheet
 
 \end_layout
 
-\begin_layout Standard
-Lab 2 requirements...
-\end_layout
-
-\begin_layout Standard
-Your lab report should include:
-\end_layout
-
-\begin_layout Enumerate
-A soft-copy of your well-written,
- well-commented code for Task 4
-\end_layout
-
-\begin_layout Standard
-This can be a copy of the entire project directory (which you can export in CCS to a zip file by Right-Clicking the project name and selecting Export -> General -> Archive File and specifying the location)
-\end_layout
-
-\begin_layout Standard
-A well-written PDF report that contains,
- in addition to the general guidelines:
-\end_layout
-
-\begin_layout Standard
-An image of an SPI waveform captured by your Saleae logic probe using the SPI protocol analyzer.
- Explain how the waveform corresponds to the known lines of code in your program,
- as well as the SPI mode you used for the OLED interface and why you chose that mode.
-\end_layout
-
-\begin_layout Standard
-Two images of I2C waveforms captured by your Saleae logic probe using the I2C protocol analyzer.
- Explain how the waveforms correspond to the commands or instructions that caused them.
-\end_layout
-
-\begin_layout Standard
-A description of any noteworthy difficulties you encountered in constructing your solution.
-\end_layout
-
 \begin_layout Section
 Introduction
 \end_layout
@@ -903,6 +866,22 @@ SPIconfig()
 \end_layout
 
 \begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+pagebreak
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
 \begin_inset listings
 lstparams "language=C,numbers=left,basicstyle={\scriptsize}"
 inline false
@@ -1130,7 +1109,7 @@ writeData()
 
 \begin_layout Standard
 \begin_inset listings
-lstparams "language=C,numbers=right,numberstyle={\tiny},basicstyle={\tiny}"
+lstparams "language=C,numbers=left,numberstyle={\tiny},basicstyle={\tiny}"
 inline false
 status open
 
@@ -1722,7 +1701,7 @@ Adafruit_init()
 
 \begin_layout Standard
 \begin_inset listings
-lstparams "language=C,numbers=right,basicstyle={\tiny}"
+lstparams "language=C,numbers=left,basicstyle={\tiny}"
 inline false
 status open
 
@@ -1878,7 +1857,7 @@ Adafruit_init()
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/jacob/ucd/wq26/eec172/labs/lab2-pt1/spi_signals.png
-	width 10cm
+	width 9cm
 	height 2cm
 
 \end_inset
@@ -2256,7 +2235,7 @@ X-Axis Signal
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/jacob/ucd/wq26/eec172/labs/lab2-pt2/pics/x_axis_waveform_zoomed_in.png
-	width 8cm
+	width 7cm
 	height 3cm
 
 \end_inset
@@ -2292,7 +2271,7 @@ Y-Axis Signal
 \begin_layout Plain Layout
 \begin_inset Graphics
 	filename /home/jacob/ucd/wq26/eec172/labs/lab2-pt2/pics/y_axis_waveform_zoomed_in.png
-	width 8cm
+	width 7cm
 	height 3cm
 
 \end_inset
@@ -3549,8 +3528,126 @@ And that concludes checkoff 4!
 Discussion
 \end_layout
 
+\begin_layout Standard
+We experienced several difficulties with this lab (hence why it was submitted one lab period late).
+ I will break down the most notable ones,
+ and try to offer an accounting of our Lab 2 experience.
+\end_layout
+
+\begin_layout Enumerate
+CCS project issues:
+ Both of us experienced issues with building CCS projects correctly.
+ Our linked resources were consistently broken and we were having trouble porting the progress from previous lab parts to current parts.
+ It turns out,
+ we were approaching the CCS project environment wrong:
+ moving files outside of the operations of the CCS environment was not respecting changes to the path environment variables.
+ Once we started manipulating the files in the CCS IDE,
+ these problems were smoothed over.
+ We also attempted to create several workspaces,
+ but the organizational hierarchy of our folders left something to be desired,
+ and it consistently confused the IDE.
+ Once we opted for one workspace,
+ with all projects at the root folder,
+ these problems also disappeared.
+ Our attempts to be organized and respect good GitHub etiquette culminated into these issues.
+ Once we played nice with Texas Instruments software,
+ there weren't any other significant issues here.
+\end_layout
+
+\begin_layout Enumerate
+Hardware issues:
+ A couple of times,
+ we did not provision the right equipment for at-home work (mainly the connector pins).
+ This ended up causing us to be late as well.
+ We've configured out environment to ensure this does not happen again.
+\end_layout
+
+\begin_layout Enumerate
+SPI API subtleties:
+ This was a serious bottleneck.
+ The SPI API for speaking with Adafruit is rather confusing.
+ Specifically,
+ it has an internal Chip Select (discussed earlier in the report) at Pin 50,
+ which conflicts with our manually set OLEDCS chip select at general-purpose Pin 02.
+ Not enabling the internal CS,
+ despite not really using it,
+ caused us a lot of grief;
+ our SPI functions were consistently stalling without doing this.
+ Once we included it in the SPI configuration function,
+ these problems disappeared,
+ but it took longer than we'd care to admit to track the source of this issue.
+ There were other SPI subtleties that ate up time,
+ but this was the main one.
+\end_layout
+
+\begin_layout Enumerate
+Dependency subtleties:
+ There were some dependencies that we had trouble working with.
+ Demos like those provided for I2C and SPI have a lot of code to make it work,
+ and if you choose to leverage that code for your own CCS project and aren't careful,
+ it is easy to miss a couple lines (if you are trying to input the 
+\begin_inset Quotes eld
+\end_inset
+
+glue code
+\begin_inset Quotes erd
+\end_inset
+
+ manually).
+ We were missing an I2C initialization in 
+\family typewriter
+main.c
+\family default
+ for Checkoff 4 that had us scratching our heads for awhile.
+ In the future,
+ we'll definitely be more observant when it comes to transporting dependency code.
+\end_layout
+
 \begin_layout Section
 Contributions
+\end_layout
+
+\begin_layout Subsection
+Jacob Feenstra
+\end_layout
+
+\begin_layout Standard
+My contributions are as follows:
+\end_layout
+
+\begin_layout Enumerate
+Wrote the Part I code.
+ Troubleshooted SPI API and getting the 
+\family typewriter
+Adafruit_init()
+\family default
+ to turn on.
+ Eventually succeeded.
+ Wrote core logic for Checkoff I deliverable.
+\end_layout
+
+\begin_layout Enumerate
+Documented the Saleae signal output for Part II.
+\end_layout
+
+\begin_layout Enumerate
+Tested the I2C protocol with the accelerometer data for Part III,
+ and documented the signal output.
+\end_layout
+
+\begin_layout Enumerate
+Wrote the Part IV code.
+ Adjust core logic for moving ball,
+ respecting 2's complement and screen boundary checks.
+ Tweaked to ensure consistent output movement.
+\end_layout
+
+\begin_layout Enumerate
+Wrote the first draft for the report and prepared it for IEEE format.
+\end_layout
+
+\begin_layout Subsection
+Chun Ho Chen
 \end_layout
 
 \end_body
