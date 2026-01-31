@@ -1,4 +1,11 @@
 //*****************************************************************************
+// Lab 2 - Checkoff 3
+// Jacob Feenstra and Chun Ho Chen
+// NOTE: this comes directly from the i2c_demo, so no additional commentary or code is provided. see lab report for additional details on this checkoff.
+//*****************************************************************************
+//
+//
+//*****************************************************************************
 //
 // Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
 // 
