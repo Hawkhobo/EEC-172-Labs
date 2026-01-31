@@ -1,0 +1,6 @@
+[0131/004546.704365:WARNING:chrome/app/chrome_main_linux.cc:82] Read channel stable from /app/extra/CHROME_VERSION_EXTRA
+[2:2:0131/004547.327252:ERROR:ui/ozone/platform/wayland/host/wayland_wp_image_description.cc:219] Incomplete image description info from compositor.
+Created TensorFlow Lite XNNPACK delegate for CPU.
+[2:2:0131/004547.498813:ERROR:ui/ozone/platform/wayland/host/wayland_wp_image_description.cc:219] Incomplete image description info from compositor.
+[2:2:0131/004547.499318:ERROR:mojo/public/cpp/bindings/lib/interface_endpoint_client.cc:732] Message 2 rejected by interface blink.mojom.Widget
+[2:43:0131/004548.874367:ERROR:google_apis/gcm/engine/registration_request.cc:292] Registration response error message: DEPRECATED_ENDPOINT

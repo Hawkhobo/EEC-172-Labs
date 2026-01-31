@@ -224,7 +224,6 @@ void main()
         // Print full character set
         int i = 0; int x = 0; int y = 0;
         bool finished = false;
-        // NOTE: adjust increment count as needed if fonts are too closely packed
         for (x = 0; x < SSD1351WIDTH && !finished; x += PIXEL_WIDTH) {
             for (y = 0; y < SSD1351HEIGHT; y += PIXEL_WIDTH) {
                 if (i < GLCD_FONT_SIZE) {
