@@ -99,7 +99,7 @@
 \papersides 1
 \paperpagestyle default
 \tablestyle default
-\tracking_changes true
+\tracking_changes false
 \output_changes false
 \change_bars false
 \postpone_fragile_content false
@@ -3603,6 +3603,32 @@ main.c
  we'll definitely be more observant when it comes to transporting dependency code.
 \end_layout
 
+\begin_layout Enumerate
+The biggest change that one of us decided on moving forward is in keeping with keep one workspace,
+ they would have folders of different files needed for different parts separately,
+ and when they needed it to run within CCS,
+ they would just use the original SPI demo,
+ gut its contents,
+ and then run since that was the only reasonable way forward.
+\end_layout
+
+\begin_layout Enumerate
+Since both of us also have USB-C only laptops,
+ this further hindered our ability to work quickly due to logistical errors in forgetting cables sometimes as well.
+ Being also on a Mac and Windows laptops separately,
+ there were some issues as well that were caused by having different instructions/ pathways for different machines,
+ and not being able to help each other troubleshooting as effectively.
+\end_layout
+
+\begin_layout Enumerate
+Using Salae as recommended by our TA definitely helped our understanding and fixing of the issue,
+ and we will proceed to keep using it moving
+\end_layout
+
+\begin_layout Enumerate
+An improvement was to start utilizing the demos first and understanding how they worked before going head long into making our own code function.
+\end_layout
+
 \begin_layout Section
 Contributions
 \end_layout
@@ -3648,6 +3674,29 @@ Wrote the first draft for the report and prepared it for IEEE format.
 
 \begin_layout Subsection
 Chun Ho Chen
+\end_layout
+
+\begin_layout Enumerate
+Troubleshooted issues that stemmed from making the code work,
+ and testing/verified that the SPI demo could communicate across both devices
+\end_layout
+
+\begin_layout Enumerate
+Troubleshooted the SPI and oled code not working,
+ and trying different pieces of code to get it working again.
+\end_layout
+
+\begin_layout Enumerate
+Ran the I2C Demo,
+ and verified outputs
+\end_layout
+
+\begin_layout Enumerate
+Wrote some of the code to initialize the ball onto the screen
+\end_layout
+
+\begin_layout Enumerate
+Edited and finalized the report draft
 \end_layout
 
 \end_body
