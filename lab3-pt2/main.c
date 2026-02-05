@@ -203,7 +203,7 @@ main(void)
     Timer_IF_IntSetup(g_ulRefBase, TIMER_A, TimerRefIntHandler);
 
     //
-    // Turn on the timers feeding values in mSec
+    // Turn on the timers feeding values in microSec
     //
     Timer_IF_Start(g_ulBase, TIMER_A, 500);
     Timer_IF_Start(g_ulRefBase, TIMER_A, 1000);

@@ -227,7 +227,7 @@ void Timer_IF_InterruptClear(unsigned long ulBase)
 void Timer_IF_Start(unsigned long ulBase, unsigned long ulTimer, 
                 unsigned long ulValue)
 {
-    MAP_TimerLoadSet(ulBase,ulTimer,MILLISECONDS_TO_TICKS(ulValue));
+    MAP_TimerLoadSet(ulBase,ulTimer,MICROSECONDS_TO_TICKS(ulValue));
     //
     // Enable the GPT 
     //
