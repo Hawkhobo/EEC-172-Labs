@@ -141,6 +141,8 @@ void SysTick_Handler() {
     HWREG(NVIC_ST_CURRENT) = 0;
 }
 
+
+#define T_UNIT 889 // RC-6 time unit in microseconds
 // primary logic for interrupt handling and parsing Remote signals
 void Remote_Handler() {
     // clear interrupt flag for pin 06
@@ -152,6 +154,7 @@ void Remote_Handler() {
     int time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
 
     // reset for next pulse
+    HWREG(NVIC_ST_CURRENT) = 0;
     HWREG(NVIC_ST_CURRENT) = 0;
 
     // Check watchdog flag, reset state if transmission is timed out
@@ -168,11 +171,16 @@ void Remote_Handler() {
 
     // Logic for RC-5/RC-6 protocol
     // Look for short 889us and long 1778us pulses
-    if (time_us > 1500 && time_us < 2000) {
-        printf("Detected Long Pulse: %d us\n", time_us);
-    } else if (time_us > 700 && time_us < 1100) {
-        printf("Detected Short Pulse: %d us\n", time_us);
-    }
+    // Filter noise, but capture everything else
+        if (time_us > 400) {
+            // Log "S" for Short (~889us) and "L" for Long (~1778us)
+            if (time_us < 1300)
+                printf("S%s ", (pin_val == 0 ? "L" : "H")); // Short Low or Short High
+            else if (time_us < 2200)
+                printf("L%s ", (pin_val == 0 ? "L" : "H")); // Long Low or Long High
+            else if (time_us > 80000)
+                printf("\n[Gap: %dms]\n", time_us/1000);   // The 88ms Gap
+        }
 }
 
 
