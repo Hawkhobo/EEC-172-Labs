@@ -200,13 +200,9 @@ void Remote_Handler() {
 static int decode_RC5(void) {
     if (pulse_idx < 10) return -1;  // Too few edges to be a valid RC-5 frame
 
-    uint32_t code     = 0;
-    int      bits     = 0;
-    // *** FIX 3 ***
-    // Start with half_waiting = 1 because Remote_Handler discards the
-    // first falling edge (the start of SS1's burst), so the first stored
-    // pulse is already the SECOND half of bit 1.
-    int      half_waiting = 1;
+    uint32_t code = 0;
+    int bits     = 0;
+    int half_waiting = 0;
 
     int i;
     for (i = 0; i < (int)pulse_idx && bits < 14; i++) {
@@ -263,7 +259,8 @@ static void print_button(int rc5_code) {
         return;
     }
 
-    int cmd  = rc5_code & 0x3F;         // 6-bit command
+
+    int cmd  = rc5_code & 0xFF;         // 8-bit command
     int addr = (rc5_code >> 6) & 0x1F;  // 5-bit address (device type)
 
     char buf[48];
@@ -272,18 +269,18 @@ static void print_button(int rc5_code) {
     // "Last" (previous channel) = 0x12 = 18 on most RC-5 remotes.
     // "Enter" / "OK" / "Zoom"   = 0x0D = 13; adjust if your remote differs.
     switch (cmd) {
-        case 0:  Message("Button: 0\n\r");          break;
-        case 1:  Message("Button: 1\n\r");          break;
-        case 2:  Message("Button: 2\n\r");          break;
-        case 3:  Message("Button: 3\n\r");          break;
-        case 4:  Message("Button: 4\n\r");          break;
-        case 5:  Message("Button: 5\n\r");          break;
-        case 6:  Message("Button: 6\n\r");          break;
-        case 7:  Message("Button: 7\n\r");          break;
-        case 8:  Message("Button: 8\n\r");          break;
-        case 9:  Message("Button: 9\n\r");          break;
-        case 18: Message("Button: LAST\n\r");       break;  // 0x12 prev-channel
-        case 13: Message("Button: ENTER/ZOOM\n\r"); break;  // 0x0D select/OK
+        case 252:  Message("Button: 0\n\r");          break;
+        case 253:  Message("Button: 1\n\r");          break;
+        case 248:  Message("Button: 2\n\r");          break;
+        case 249:  Message("Button: 3\n\r");          break;
+        case 244:  Message("Button: 4\n\r");          break;
+        case 245:  Message("Button: 5\n\r");          break;
+        case 240:  Message("Button: 6\n\r");          break;
+        case 241:  Message("Button: 7\n\r");          break;
+        case 236:  Message("Button: 8\n\r");          break;
+        case 237:  Message("Button: 9\n\r");          break;
+        case 229: Message("Button: MUTE\n\r");       break;  // 0x12 prev-channel
+        case 184: Message("Button: LAST\n\r"); break;  // 0x0D select/OK
         default:
             // Unknown command: print raw values so you can calibrate the table.
             sprintf(buf, "Unknown: addr=%d cmd=%d (raw=0x%04X)\n\r",
