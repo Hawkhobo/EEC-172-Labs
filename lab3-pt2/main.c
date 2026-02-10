@@ -49,13 +49,16 @@
 #include "rom_map.h"
 #include "hw_memmap.h"
 #include "timer.h"
+#include "uart.h"
 #include "utils.h"
 #include "gpio.h"
 #include "systick.h"
 
 // Common interface includes
+#include "Debug/syscfg/pin_mux_config.h"
+#include "stdint.h"
 #include "timer_if.h"
-#include "pin_mux_config.h"
+#include "uart_if.h"
 
 
 //*****************************************************************************
@@ -97,7 +100,6 @@ BoardInit(void)
     // Enable Processor
     //
     MAP_IntMasterEnable();
-    MAP_IntEnable(FAULT_SYSTICK);
 
     PRCMCC3200MCUInit();
 }
@@ -111,13 +113,15 @@ BoardInit(void)
 #define RELOAD 0x00FFFFFF // max value for 24 bits
 #define TICKS_PER_US 80   // 80MHz clock / 1,000,000
 volatile int timer_counter = 0; // current timer_count, labelled volatile so hardware (interrupts) can see it
+volatile uint32_t pulse_buffer[128]; // Buffer to store timings
+volatile uint32_t pulse_idx = 0;
 unsigned long decoded_code = 0;
 int bit_count = 0;
 
 // internal registers used by SysTick
-#define NVIC_ST_CTRL    (*((volatile unsigned long *)0xE000E010))
-#define NVIC_ST_RELOAD  (*((volatile unsigned long *)0xE000E014))
-#define NVIC_ST_CURRENT (*((volatile unsigned long *)0xE000E018))
+#define NVIC_ST_CTRL    0xE000E010
+#define NVIC_ST_RELOAD  0xE000E014
+#define NVIC_ST_CURRENT 0xE000E018
 
 // SysTick control register bitmasks
 #define NVIC_ST_CTRL_CLK_SRC  0x00000004
@@ -126,6 +130,8 @@ int bit_count = 0;
 
 // SysTick Configuration: high-speed down-counter with microsecond pulse precision
 void SysTick_Init(void) {
+    SysTickIntRegister(SysTick_Handler);
+
     HWREG(NVIC_ST_RELOAD) = RELOAD - 1;
     HWREG(NVIC_ST_CURRENT) = 0; // reset timer
     // enable clock source (processor), interrupt, and the counter
@@ -146,40 +152,37 @@ void SysTick_Handler() {
 // primary logic for interrupt handling and parsing Remote signals
 void Remote_Handler() {
     // clear interrupt flag for pin 06
-    unsigned long status = MAP_GPIOIntStatus(GPIOA0_BASE, true);
-    MAP_GPIOIntClear(GPIOA0_BASE, status);
+    unsigned long status = MAP_GPIOIntStatus(GPIOA1_BASE, true);
+    MAP_GPIOIntClear(GPIOA1_BASE, status);
 
     // Measure elapsed time since last edge
     // regisers NVIC_ST_CURRENT stores current value of SysTick
-    int time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
+    uint32_t time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
 
     // reset for next pulse
     HWREG(NVIC_ST_CURRENT) = 0;
-    HWREG(NVIC_ST_CURRENT) = 0;
-
-    // Check watchdog flag, reset state if transmission is timed out
-    if (timer_counter == 1) {
-        bit_count = 0;
-        decoded_code = 0;
-        timer_counter = 0;
-        return;
-    }
-
-    // Read pin 06 and determine pulse type
-    int pin_val = MAP_GPIOPinRead(GPIOA0_BASE, GPIO_PIN_6);
-    int time_us = time_ticks / TICKS_PER_US; // convert to microseconds
 
     // Logic for RC-5/RC-6 protocol
     // Look for short 889us and long 1778us pulses
     // Filter noise, but capture everything else
-        if (time_us > 400) {
-            // Log "S" for Short (~889us) and "L" for Long (~1778us)
-            if (time_us < 1300)
-                printf("S%s ", (pin_val == 0 ? "L" : "H")); // Short Low or Short High
-            else if (time_us < 2200)
-                printf("L%s ", (pin_val == 0 ? "L" : "H")); // Long Low or Long High
-            else if (time_us > 80000)
-                printf("\n[Gap: %dms]\n", time_us/1000);   // The 88ms Gap
+    if (timer_counter == 0) {
+            if (pulse_idx < 128) {
+                int pin_val = MAP_GPIOPinRead(GPIOA1_BASE, GPIO_PIN_7);
+                uint32_t time_us = time_ticks / TICKS_PER_US;
+
+                // Store polarity in MSB: 1 = Pulse was HIGH, 0 = Pulse was LOW
+                // Note: If pin is LOW now, the pulse that just ended was HIGH.
+                if (pin_val == 0) {
+                    pulse_buffer[pulse_idx] = time_us | 0x80000000;
+                } else {
+                    pulse_buffer[pulse_idx] = time_us;
+                }
+                pulse_idx++;
+            }
+        } else {
+            // New transmission starting
+            timer_counter = 0;
+            pulse_idx = 0;
         }
 }
 
@@ -190,21 +193,45 @@ int main(void)
     // Initialize board configurations
     BoardInit();
     //
-    // Pinmuxing for LEDs
+    // Pinmuxing for IR receiver and UART
     //
     PinMuxConfig();
 
+    // init UART terminal
+    InitTerm();
+
     SysTick_Init();
 
+    MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
+    while(!MAP_PRCMPeripheralStatusGet(PRCM_GPIOA1));
+
     // Configure Pin 06 on rising and falling edges
-    MAP_GPIOIntRegister(GPIOA0_BASE, Remote_Handler);
-    MAP_GPIOIntTypeSet(GPIOA0_BASE, GPIO_PIN_6, GPIO_BOTH_EDGES);
-    MAP_GPIOIntEnable(GPIOA0_BASE, GPIO_PIN_6);
+    MAP_GPIOIntRegister(GPIOA1_BASE, Remote_Handler);
+    MAP_GPIOIntTypeSet(GPIOA1_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
+    MAP_GPIOIntEnable(GPIOA1_BASE, GPIO_PIN_7);
+
 
     //
     // Loop forever while the timers run.
     //
+    Message("start looping");
     while(1)
     {
+        // If the watchdog fired, it means the burst is finished
+        if (timer_counter == 1 && pulse_idx > 0) {
+            int i;
+            for (i = 0; i < pulse_idx; i++) {
+                uint32_t t = pulse_buffer[i] & 0x7FFFFFFF;
+                char level = (pulse_buffer[i] & 0x80000000) ? 'H' : 'L';
+                char speed = (t < 1300) ? 'S' : 'L'; // S < 1.3ms, L > 1.3ms
+
+                // Report formatted signature to UART
+                char log[10];
+                sprintf(log, "%c%c ", speed, level);
+                Message(log);
+            }
+            Message("\n\r");
+            pulse_idx = 0; // Reset for next button press
+        }
     }
 }
