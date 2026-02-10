@@ -50,10 +50,11 @@
 #include "hw_memmap.h"
 #include "timer.h"
 #include "utils.h"
+#include "gpio.h"
+#include "systick.h"
 
 // Common interface includes
 #include "timer_if.h"
-
 #include "pin_mux_config.h"
 
 
@@ -67,59 +68,6 @@ extern void (* const g_pfnVectors[])(void);
 extern uVectorEntry __vector_table;
 #endif
 
-//*****************************************************************************
-//
-// Globals used by the timer interrupt handler.
-//
-//*****************************************************************************
-static volatile unsigned long g_ulSysTickValue;
-static volatile unsigned long g_ulBase;
-static volatile unsigned long g_ulRefBase;
-static volatile unsigned long g_ulRefTimerInts = 0;
-static volatile unsigned long g_ulIntClearVector;
-unsigned long g_ulTimerInts;
-
-//*****************************************************************************
-//
-//! The interrupt handler for the first timer interrupt.
-//!
-//! \param  None
-//!
-//! \return none
-//
-//*****************************************************************************
-void
-TimerBaseIntHandler(void)
-{
-    //
-    // Clear the timer interrupt.
-    //
-    Timer_IF_InterruptClear(g_ulBase);
-
-    g_ulTimerInts ++;
-    //GPIO_IF_LedToggle(MCU_GREEN_LED_GPIO);
-}
-
-//*****************************************************************************
-//
-//! The interrupt handler for the second timer interrupt.
-//!
-//! \param  None
-//!
-//! \return none
-//
-//*****************************************************************************
-void
-TimerRefIntHandler(void)
-{
-    //
-    // Clear the timer interrupt.
-    //
-    Timer_IF_InterruptClear(g_ulRefBase);
-
-    g_ulRefTimerInts ++;
-    //GPIO_IF_LedToggle(MCU_RED_LED_GPIO);
-}
 
 //*****************************************************************************
 //
@@ -154,18 +102,81 @@ BoardInit(void)
     PRCMCC3200MCUInit();
 }
 
-//*****************************************************************************
+
+//***************************************************
 //
-//!    main function demonstrates the use of the timers to generate
-//! periodic interrupts.
-//!
-//! \param  None
-//!
-//! \return none
+// Globals used by SysTick and TV Remote Handler
 //
-//*****************************************************************************
-int
-main(void)
+//***************************************************
+#define RELOAD 0x00FFFFFF // max value for 24 bits
+#define TICKS_PER_US 80   // 80MHz clock / 1,000,000
+volatile int timer_counter = 0; // current timer_count, labelled volatile so hardware (interrupts) can see it
+unsigned long decoded_code = 0;
+int bit_count = 0;
+
+// internal registers used by SysTick
+#define NVIC_ST_CTRL    (*((volatile unsigned long *)0xE000E010))
+#define NVIC_ST_RELOAD  (*((volatile unsigned long *)0xE000E014))
+#define NVIC_ST_CURRENT (*((volatile unsigned long *)0xE000E018))
+
+// SysTick control register bitmasks
+#define NVIC_ST_CTRL_CLK_SRC  0x00000004
+#define NVIC_ST_CTRL_INTEN    0x00000002
+#define NVIC_ST_CTRL_ENABLE   0x00000001
+
+// SysTick Configuration: high-speed down-counter with microsecond pulse precision
+void SysTick_Init(void) {
+    HWREG(NVIC_ST_RELOAD) = RELOAD - 1;
+    HWREG(NVIC_ST_CURRENT) = 0; // reset timer
+    // enable clock source (processor), interrupt, and the counter
+    HWREG(NVIC_ST_CTRL) |= (NVIC_ST_CTRL_CLK_SRC | NVIC_ST_CTRL_INTEN | NVIC_ST_CTRL_ENABLE);
+}
+
+
+void SysTick_Handler() {
+    // set timer_counter to 1 if we haven't seen an IR edge in 209ms (message concluded)
+    timer_counter = 1;
+
+    // Clear count and interrupt flag; give control back to software
+    HWREG(NVIC_ST_CURRENT) = 0;
+}
+
+// primary logic for interrupt handling and parsing Remote signals
+void Remote_Handler() {
+    // clear interrupt flag for pin 06
+    unsigned long status = MAP_GPIOIntStatus(GPIOA0_BASE, true);
+    MAP_GPIOIntClear(GPIOA0_BASE, status);
+
+    // Measure elapsed time since last edge
+    // regisers NVIC_ST_CURRENT stores current value of SysTick
+    int time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
+
+    // reset for next pulse
+    HWREG(NVIC_ST_CURRENT) = 0;
+
+    // Check watchdog flag, reset state if transmission is timed out
+    if (timer_counter == 1) {
+        bit_count = 0;
+        decoded_code = 0;
+        timer_counter = 0;
+        return;
+    }
+
+    // Read pin 06 and determine pulse type
+    int pin_val = MAP_GPIOPinRead(GPIOA0_BASE, GPIO_PIN_6);
+    int time_us = time_ticks / TICKS_PER_US; // convert to microseconds
+
+    // Logic for RC-5/RC-6 protocol
+    // Look for short 889us and long 1778us pulses
+    if (time_us > 1500 && time_us < 2000) {
+        printf("Detected Long Pulse: %d us\n", time_us);
+    } else if (time_us > 700 && time_us < 1100) {
+        printf("Detected Short Pulse: %d us\n", time_us);
+    }
+}
+
+
+int main(void)
 {
     //
     // Initialize board configurations
@@ -174,40 +185,14 @@ main(void)
     // Pinmuxing for LEDs
     //
     PinMuxConfig();
-    //
-    // configure the LED RED and GREEN
-    //
-    //GPIO_IF_LedConfigure(LED1|LED3);
 
-    //GPIO_IF_LedOff(MCU_RED_LED_GPIO);
-    //GPIO_IF_LedOff(MCU_GREEN_LED_GPIO);
+    SysTick_Init();
 
-    //
-    // Base address for first timer
-    //
-    g_ulBase = TIMERA0_BASE;
-    //
-    // Base address for second timer
-    //
-    g_ulRefBase = TIMERA1_BASE;
-    //
-    // Configuring the timers
-    //
-    Timer_IF_Init(PRCM_TIMERA0, g_ulBase, TIMER_CFG_PERIODIC, TIMER_A, 0);
-    Timer_IF_Init(PRCM_TIMERA1, g_ulRefBase, TIMER_CFG_PERIODIC, TIMER_A, 0);
+    // Configure Pin 06 on rising and falling edges
+    MAP_GPIOIntRegister(GPIOA0_BASE, Remote_Handler);
+    MAP_GPIOIntTypeSet(GPIOA0_BASE, GPIO_PIN_6, GPIO_BOTH_EDGES);
+    MAP_GPIOIntEnable(GPIOA0_BASE, GPIO_PIN_6);
 
-    //
-    // Setup the interrupts for the timer timeouts.
-    //
-    Timer_IF_IntSetup(g_ulBase, TIMER_A, TimerBaseIntHandler);
-    Timer_IF_IntSetup(g_ulRefBase, TIMER_A, TimerRefIntHandler);
-
-    //
-    // Turn on the timers feeding values in microSec
-    //
-    Timer_IF_Start(g_ulBase, TIMER_A, 500);
-    Timer_IF_Start(g_ulRefBase, TIMER_A, 1000);
-	
     //
     // Loop forever while the timers run.
     //
