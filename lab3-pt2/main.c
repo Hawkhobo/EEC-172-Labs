@@ -112,11 +112,8 @@ BoardInit(void)
 //***************************************************
 #define RELOAD 0x00FFFFFF // max value for 24 bits
 #define TICKS_PER_US 80   // 80MHz clock / 1,000,000
-volatile int timer_counter = 0; // current timer_count, labelled volatile so hardware (interrupts) can see it
-volatile uint32_t pulse_buffer[128]; // Buffer to store timings
-volatile uint32_t pulse_idx = 0;
-unsigned long decoded_code = 0;
-int bit_count = 0;
+void SysTick_Handler(void);
+
 
 // internal registers used by SysTick
 #define NVIC_ST_CTRL    0xE000E010
@@ -128,6 +125,19 @@ int bit_count = 0;
 #define NVIC_ST_CTRL_INTEN    0x00000002
 #define NVIC_ST_CTRL_ENABLE   0x00000001
 
+// RC-5 protocol constants
+#define T_UNIT       889
+#define T_SHORT_MAX  1334
+#define T_NOISE_MIN  300
+#define T_LONG_MAX   2500
+
+// raw edge timings
+volatile uint32_t pulse_buffer[128]; // Buffer to store timings
+volatile uint32_t pulse_idx = 0;
+
+// cross-ISR flag
+volatile int timer_counter = 0; // current timer_count, labelled volatile so hardware (interrupts) can see it
+
 // SysTick Configuration: high-speed down-counter with microsecond pulse precision
 void SysTick_Init(void) {
     SysTickIntRegister(SysTick_Handler);
@@ -135,7 +145,9 @@ void SysTick_Init(void) {
     HWREG(NVIC_ST_RELOAD) = RELOAD - 1;
     HWREG(NVIC_ST_CURRENT) = 0; // reset timer
     // enable clock source (processor), interrupt, and the counter
-    HWREG(NVIC_ST_CTRL) |= (NVIC_ST_CTRL_CLK_SRC | NVIC_ST_CTRL_INTEN | NVIC_ST_CTRL_ENABLE);
+    HWREG(NVIC_ST_CTRL) |= (NVIC_ST_CTRL_CLK_SRC |
+                            NVIC_ST_CTRL_INTEN   |
+                            NVIC_ST_CTRL_ENABLE  );
 }
 
 
@@ -148,7 +160,6 @@ void SysTick_Handler() {
 }
 
 
-#define T_UNIT 889 // RC-6 time unit in microseconds
 // primary logic for interrupt handling and parsing Remote signals
 void Remote_Handler() {
     // clear interrupt flag for pin 06
@@ -173,7 +184,7 @@ void Remote_Handler() {
                 // Store polarity in MSB: 1 = Pulse was HIGH, 0 = Pulse was LOW
                 // Note: If pin is LOW now, the pulse that just ended was HIGH.
                 if (pin_val == 0) {
-                    pulse_buffer[pulse_idx] = time_us | 0x80000000;
+                    pulse_buffer[pulse_idx] = time_us | 0x80000000u;
                 } else {
                     pulse_buffer[pulse_idx] = time_us;
                 }
@@ -186,6 +197,101 @@ void Remote_Handler() {
         }
 }
 
+static int decode_RC5(void) {
+    if (pulse_idx < 10) return -1;  // Too few edges to be a valid RC-5 frame
+
+    uint32_t code     = 0;
+    int      bits     = 0;
+    // *** FIX 3 ***
+    // Start with half_waiting = 1 because Remote_Handler discards the
+    // first falling edge (the start of SS1's burst), so the first stored
+    // pulse is already the SECOND half of bit 1.
+    int      half_waiting = 1;
+
+    int i;
+    for (i = 0; i < (int)pulse_idx && bits < 14; i++) {
+        uint32_t t    = pulse_buffer[i] & 0x7FFFFFFFu;
+        int      high = (pulse_buffer[i] & 0x80000000u) ? 1 : 0;
+        // high == 1    the pulse that ended was HIGH (no carrier)
+        // high == 0  the pulse that ended was LOW  (carrier active)
+
+        // Discard noise and inter-frame gaps
+        if (t < T_NOISE_MIN || t > T_LONG_MAX) continue;
+
+        int is_short = (t < T_SHORT_MAX);
+
+        if (is_short) {
+            // A short pulse is one half-bit interval.
+            if (!half_waiting) {
+                // This is the FIRST half of a new bit; save and wait.
+                half_waiting = 1;
+            } else {
+                // This is the SECOND half; the bit value equals the level
+                // of this second half.
+                //   RC-5 "1" second half HIGH high == 1, bit = 1
+                //   RC-5 "0" second half LOW high == 0, bit = 0
+                code = (code << 1) | (unsigned int)high;
+                bits++;
+                half_waiting = 0;
+            }
+        } else {
+            // A long pulse spans TWO half-bit intervals at the same level.
+            // This always completes the currently pending half-bit AND starts
+            // the next bit's first half (which is the same level).
+            if (!half_waiting) {
+                // Long pulse at a full-bit boundary (unusual but can happen
+                // at the very start of the frame). Treat as first-half only.
+                half_waiting = 1;
+            } else {
+                // Complete the pending bit: second half = this pulse's level.
+                code = (code << 1) | (unsigned int)high;
+                bits++;
+                // The end of this long pulse is also the first half of the
+                // NEXT bit (same level), so remain in half_waiting = 1.
+                half_waiting = 1;
+            }
+        }
+    }
+
+    if (bits < 14) return -1;   // incomplete frame
+    return (int)(code & 0x3FFFu);
+}
+
+static void print_button(int rc5_code) {
+    if (rc5_code < 0) {
+        Message("RC-5 decode error (too few pulses?)\n\r");
+        return;
+    }
+
+    int cmd  = rc5_code & 0x3F;         // 6-bit command
+    int addr = (rc5_code >> 6) & 0x1F;  // 5-bit address (device type)
+
+    char buf[48];
+
+    // Standard Philips RC-5 TV command codes (address = 0).
+    // "Last" (previous channel) = 0x12 = 18 on most RC-5 remotes.
+    // "Enter" / "OK" / "Zoom"   = 0x0D = 13; adjust if your remote differs.
+    switch (cmd) {
+        case 0:  Message("Button: 0\n\r");          break;
+        case 1:  Message("Button: 1\n\r");          break;
+        case 2:  Message("Button: 2\n\r");          break;
+        case 3:  Message("Button: 3\n\r");          break;
+        case 4:  Message("Button: 4\n\r");          break;
+        case 5:  Message("Button: 5\n\r");          break;
+        case 6:  Message("Button: 6\n\r");          break;
+        case 7:  Message("Button: 7\n\r");          break;
+        case 8:  Message("Button: 8\n\r");          break;
+        case 9:  Message("Button: 9\n\r");          break;
+        case 18: Message("Button: LAST\n\r");       break;  // 0x12 prev-channel
+        case 13: Message("Button: ENTER/ZOOM\n\r"); break;  // 0x0D select/OK
+        default:
+            // Unknown command: print raw values so you can calibrate the table.
+            sprintf(buf, "Unknown: addr=%d cmd=%d (raw=0x%04X)\n\r",
+                    addr, cmd, rc5_code);
+            Message(buf);
+            break;
+    }
+}
 
 int main(void)
 {
@@ -219,18 +325,9 @@ int main(void)
     {
         // If the watchdog fired, it means the burst is finished
         if (timer_counter == 1 && pulse_idx > 0) {
-            int i;
-            for (i = 0; i < pulse_idx; i++) {
-                uint32_t t = pulse_buffer[i] & 0x7FFFFFFF;
-                char level = (pulse_buffer[i] & 0x80000000) ? 'H' : 'L';
-                char speed = (t < 1300) ? 'S' : 'L'; // S < 1.3ms, L > 1.3ms
-
-                // Report formatted signature to UART
-                char log[10];
-                sprintf(log, "%c%c ", speed, level);
-                Message(log);
-            }
-            Message("\n\r");
+            timer_counter = 0;
+            int rc5_code = decode_RC5();
+            print_button(rc5_code);
             pulse_idx = 0; // Reset for next button press
         }
     }
