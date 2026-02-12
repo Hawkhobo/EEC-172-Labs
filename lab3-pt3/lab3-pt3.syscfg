@@ -2,7 +2,7 @@
  * These arguments were used when this file was generated. They will be automatically applied on subsequent loads
  * via the GUI or CLI. Run CLI with '--help' for additional information on how to override these arguments.
  * @cliArgs --device "CC3200" --package "Default" --part "Default"
- * @versions {"tool":"1.15.0+2826"}
+ * @versions {"tool":"1.18.0+3266"}
  */
 scripting.excludeFromBuild("rom_pin_mux_config.c");
 scripting.excludeFromBuild("summary.csv");
@@ -22,6 +22,8 @@ iGPIO1.GPIO06.$used = false;
 iGPIO1.GPIO07.$used = false;
 iGPIO1.GPIO08.$used = false;
 iGPIO1.GPIO09.io    = "output";
+iGPIO1.GPIO10.io    = "output";
+iGPIO1.GPIO11.io    = "output";
 iGPIO1.GPIO12.io    = "output";
 iGPIO1.GPIO12.$used = false;
 iGPIO1.GPIO13.io    = "output";
@@ -51,15 +53,15 @@ iUART1.CTS.$used    = false;
  * re-solve from scratch.
  */
 iGPIO1.$suggestSolution        = "GPIO";
-iGPIO1.GPIO09.$suggestSolution = "ball.64";
-iGPIO1.GPIO10.$suggestSolution = "ball.1";
-iGPIO1.GPIO11.$suggestSolution = "ball.2";
-iGPIO1.GPIO15.$suggestSolution = "ball.6";
+iGPIO1.GPIO09.$suggestSolution = "GP09";
+iGPIO1.GPIO10.$suggestSolution = "GP10";
+iGPIO1.GPIO11.$suggestSolution = "GP11";
+iGPIO1.GPIO15.$suggestSolution = "GP15";
 iSPI1.$suggestSolution         = "SPI0";
-iSPI1.CS.$suggestSolution      = "ball.50";
-iSPI1.CLK.$suggestSolution     = "ball.5";
-iSPI1.MISO.$suggestSolution    = "ball.53";
-iSPI1.MOSI.$suggestSolution    = "ball.7";
+iSPI1.CS.$suggestSolution      = "GP00";
+iSPI1.CLK.$suggestSolution     = "GP14";
+iSPI1.MISO.$suggestSolution    = "GP30";
+iSPI1.MOSI.$suggestSolution    = "GP16";
 iUART1.$suggestSolution        = "UART0";
-iUART1.TX.$suggestSolution     = "ball.55";
-iUART1.RX.$suggestSolution     = "ball.57";
+iUART1.TX.$suggestSolution     = "GP01";
+iUART1.RX.$suggestSolution     = "GP02";

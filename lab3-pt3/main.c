@@ -59,7 +59,7 @@
 #include "utils.h"
 
 // Common interface includes
-#include "pin_mux_config.h"
+#include "Debug/syscfg/pin_mux_config.h"
 #include "timer_if.h"
 #include "uart_if.h"
 
@@ -382,6 +382,17 @@ struct ascii_buttons alpha = {
  {'W', 'X', 'Y', 'Z'}
 };
 
+// Button order: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, Mute, Last }
+int button_cmds[12] = {252, 253, 248, 249, 244, 245, 240, 241, 236, 237, 229, 184};
+
+// Extract current cmd from finished pulse
+int fetch_cmd(int rc5_code) {
+    if (rc5_code < 0) {
+        return;
+    }
+    return rc5_code & 0xFF;
+}
+
 
 // fires after 2 seconds have elapsed
 volatile bool multitap_timeout = false;
@@ -465,13 +476,22 @@ int main(void)
     Message("start looping");
     while(1)
     {
-        // timer runs for 2 seconds
-        multitap_timeout = false;
-        Timer_IF_Start(TIMERA1_BASE, TIMER_A, 2000);
         // If the watchdog fired, it means the burst is finished
         if (timer_counter == 1 && pulse_idx > 0) {
             timer_counter = 0;
-            int rc5_code = decode_RC5();
+
+            multitap_timeout = false;
+            Timer_IF_Start(TIMERA1_BASE, TIMER_A, 2000);
+            // multitap_timer runs for 2 seconds
+            int rc5_code = -1;
+            int cmd = 0;
+            while (!multitap_timeout) {
+                rc5_code = decode_RC5();
+                cmd = fetch_cmd(rc5_code);
+
+
+            }
+            rc5_code = decode_RC5();
             print_button(rc5_code);
             //print_OLED(rc5_code);
             pulse_idx = 0; // Reset for next button press
