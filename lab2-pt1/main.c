@@ -204,12 +204,6 @@ void main()
     //
     PinMuxConfig();
 
-    //
-    // I2C Init
-    //
-    I2C_IF_Open(I2C_MASTER_MODE_FST);
-
-
     // Configure SPI for configuration
     SPIconfig();
 
