@@ -1,5 +1,5 @@
+// Lab 3 Checkoff 3 -- Board to Board Texting via UART
 // Jacob Feenstra & Chun Ho Chen
-// Lab 3 Checkoff 2 -- Decoding IR Transmissions / Application Program
 
 //*****************************************************************************
 //
@@ -38,28 +38,36 @@
 
 // Standard include
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 // Driverlib includes
+#include "gpio.h"
 #include "hw_types.h"
-#include "interrupt.h"
 #include "hw_ints.h"
 #include "hw_apps_rcm.h"
 #include "hw_common_reg.h"
+#include "hw_memmap.h"
+#include "interrupt.h"
 #include "prcm.h"
 #include "rom.h"
 #include "rom_map.h"
-#include "hw_memmap.h"
+#include "spi.h"
+#include "systick.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
-#include "gpio.h"
-#include "systick.h"
 
 // Common interface includes
 #include "Debug/syscfg/pin_mux_config.h"
-#include "stdint.h"
 #include "timer_if.h"
 #include "uart_if.h"
+
+// OLED Adafruit functions for output via SPI
+#include "adafruit_oled_lib/Adafruit_SSD1351.h"
+#include "adafruit_oled_lib/Adafruit_GFX.h"
+#include "adafruit_oled_lib/glcdfont.h"
+#include "adafruit_oled_lib/oled_test.h"
 
 
 //*****************************************************************************
@@ -101,8 +109,53 @@ BoardInit(void)
     // Enable Processor
     //
     MAP_IntMasterEnable();
-    // Removed SysTick call here
+    //MAP_IntEnable(FAULT_SYSTICK);
     PRCMCC3200MCUInit();
+}
+
+//*****************************************************************************
+// Globals for SPI communication
+//*****************************************************************************
+#define SPI_IF_BIT_RATE  1000000
+#define TR_BUFF_SIZE     100
+
+//*****************************************************************************
+//
+//!
+//!
+//! Configure SPI for communication
+//!
+//! \return None.
+//
+//*****************************************************************************
+void SPIconfig()
+{
+
+    //
+    // Reset SPI
+    //
+    MAP_SPIReset(GSPI_BASE);
+
+    //
+    // Configure SPI interface
+    //
+    // Using Mode 3; only interested in MOSI, CS, and SCLK for SPI
+    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+                     SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_3,
+                     (SPI_SW_CTRL_CS |
+                     SPI_4PIN_MODE |
+                     SPI_TURBO_OFF |
+                     SPI_CS_ACTIVEHIGH |
+                     SPI_WL_8));
+
+    //
+    // Enable SPI for communication
+    //
+    MAP_SPIEnable(GSPI_BASE);
+
+    // enable internal SPI CS to satisfy SPI API;note we are using GPIOP CS instead to work with writeCommand() and writeData()
+    MAP_SPICSEnable(GSPI_BASE);
+
 }
 
 
@@ -256,7 +309,6 @@ static int decode_RC5(void) {
 
 static void print_button(int rc5_code) {
     if (rc5_code < 0) {
-        Message("RC-5 decode error (too few pulses?)\n\r");
         return;
     }
 
@@ -291,6 +343,65 @@ static void print_button(int rc5_code) {
     }
 }
 
+/***********************************************************************************
+ * Globals used by printing to OLED
+ */
+//**********************************************************************************
+#define ASCII_WIDTH 5
+#define ASCII_HEIGHT 7
+
+/***********************************************************************************
+ * Data structures and rules to facilitate multi-tap texting
+ */
+//**********************************************************************************
+// set delay for determining if cycling through characters or printing a character
+/*#define DELAY 2e6 // 2s in us
+struct ascii_buttons {
+  unsigned char b_0[0] = {' '};
+  unsigned char b_2[3] = {'A', 'B', 'C'};
+  unsigned char b_3[3] = {'D', 'E', 'F'};
+  unsigned char b_4[3] = {'G', 'H', 'I'};
+  unsigned char b_5[3] = {'J', 'K', 'L'};
+  unsigned char b_6[3] = {'M', 'N', 'O'};
+  unsigned char b_7[4] = {'P', 'Q', 'R', 'S'};
+  unsigned char b_8[3] = {'T', 'U', 'V'};
+  unsigned char b_9[4] = {'W', 'X', 'Y', 'Z'};
+}; alpha;*/
+
+
+
+
+
+// Given a button press, print the selected character
+static void print_OLED(int rc5_code) {
+    if (rc5_code < 0) {
+          return;
+      }
+
+    int cmd  = rc5_code & 0xFF; // 8-bit command
+
+    fillScreen(WHITE);
+    int x = 0, y = 0;
+    switch (cmd) {
+        case 252:  drawChar(x, y, '0', 1, 1, 1); break;
+        case 253:  drawChar(x, y, '1', 1, 1, 1); break;
+        case 248:  drawChar(x, y, '2', 1, 1, 1); break;
+        case 249:  drawChar(x, y, '3', 1, 1, 1); break;
+        case 244:  drawChar(x, y, '4', 1, 1, 1); break;
+        case 245:  drawChar(x, y, '5', 1, 1, 1); break;
+        case 240:  drawChar(x, y, '6', 1, 1, 1); break;
+        case 241:  drawChar(x, y, '7', 1, 1, 1); break;
+        case 236:  drawChar(x, y, '8', 1, 1, 1); break;
+        case 237:  drawChar(x, y, '9', 1, 1, 1); break;
+        case 229:  drawChar(x, y, 'M', 1, 1, 1); break;
+        case 184:  drawChar(x, y, 'L', 1, 1, 1); break;
+        default:   break;
+    }
+
+}
+
+
+
 int main(void)
 {
     //
@@ -305,6 +416,12 @@ int main(void)
     InitTerm();
 
     SysTick_Init();
+
+    // Configure SPI for OLED
+    SPIconfig();
+    // Initialize and turn on OLED
+    Adafruit_Init();
+
 
     MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
     while(!MAP_PRCMPeripheralStatusGet(PRCM_GPIOA1));
@@ -326,6 +443,7 @@ int main(void)
             timer_counter = 0;
             int rc5_code = decode_RC5();
             print_button(rc5_code);
+            print_OLED(rc5_code);
             pulse_idx = 0; // Reset for next button press
         }
     }
