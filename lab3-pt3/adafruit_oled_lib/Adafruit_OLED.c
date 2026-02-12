@@ -22,8 +22,8 @@
 #include "Adafruit_SSD1351.h"
 
 #define DC_PIN      0x2   // GPIO_PIN_1 on GPIOA1_BASE
-#define RESET_PIN   0x10   // GPIO_PIN_4 on GPIOA1_BASE
-#define OLED_CS_PIN 0x20   // GPIO_PIN_5 on GPIOA1_BASE
+#define RESET_PIN   0x4   // GPIO_PIN_2 on GPIOA1_BASE
+#define OLED_CS_PIN 0x8   // GPIO_PIN_3 on GPIOA1_BASE
 
 // Macros for controlling pins (short form)
 #define DC_COMMAND()    GPIOPinWrite(GPIOA1_BASE, DC_PIN, 0)          // DC = LOW for commands

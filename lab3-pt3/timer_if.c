@@ -298,7 +298,7 @@ void Timer_IF_DeInit(unsigned long ulBase,unsigned long ulTimer)
 void Timer_IF_ReLoad(unsigned long ulBase, unsigned long ulTimer, 
                 unsigned long ulValue)
 {
-    MAP_TimerLoadSet(ulBase,ulTimer,MILLISECONDS_TO_TICKS(ulValue));
+    MAP_TimerLoadSet(ulBase,ulTimer,MICROSECONDS_TO_TICKS(ulValue));
 }
 
 //*****************************************************************************

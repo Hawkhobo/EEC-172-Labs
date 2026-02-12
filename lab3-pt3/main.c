@@ -59,7 +59,7 @@
 #include "utils.h"
 
 // Common interface includes
-#include "Debug/syscfg/pin_mux_config.h"
+#include "pin_mux_config.h"
 #include "timer_if.h"
 #include "uart_if.h"
 
@@ -109,7 +109,7 @@ BoardInit(void)
     // Enable Processor
     //
     MAP_IntMasterEnable();
-    //MAP_IntEnable(FAULT_SYSTICK);
+    MAP_IntEnable(FAULT_SYSTICK);
     PRCMCC3200MCUInit();
 }
 
@@ -355,20 +355,40 @@ static void print_button(int rc5_code) {
  */
 //**********************************************************************************
 // set delay for determining if cycling through characters or printing a character
-/*#define DELAY 2e6 // 2s in us
+
+#define DELAY 2e6 // 2s in us
+
 struct ascii_buttons {
-  unsigned char b_0[0] = {' '};
-  unsigned char b_2[3] = {'A', 'B', 'C'};
-  unsigned char b_3[3] = {'D', 'E', 'F'};
-  unsigned char b_4[3] = {'G', 'H', 'I'};
-  unsigned char b_5[3] = {'J', 'K', 'L'};
-  unsigned char b_6[3] = {'M', 'N', 'O'};
-  unsigned char b_7[4] = {'P', 'Q', 'R', 'S'};
-  unsigned char b_8[3] = {'T', 'U', 'V'};
-  unsigned char b_9[4] = {'W', 'X', 'Y', 'Z'};
-}; alpha;*/
+  unsigned char b_0[1];
+  unsigned char b_2[3];
+  unsigned char b_3[3];
+  unsigned char b_4[3];
+  unsigned char b_5[3];
+  unsigned char b_6[3];
+  unsigned char b_7[4];
+  unsigned char b_8[3];
+  unsigned char b_9[4];
+};
+
+struct ascii_buttons alpha = {
+ {' '},
+ {'A', 'B', 'C'},
+ {'D', 'E', 'F'},
+ {'G', 'H', 'I'},
+ {'J', 'K', 'L'},
+ {'M', 'N', 'O'},
+ {'P', 'Q', 'R', 'S'},
+ {'T', 'U', 'V'},
+ {'W', 'X', 'Y', 'Z'}
+};
 
 
+// fires after 2 seconds have elapsed
+volatile bool multitap_timeout = false;
+void TimerCallback(void) {
+    Timer_IF_InterruptClear(TIMERA1_BASE); // Clear the interrupt
+    multitap_timeout = true;               // Set boolean
+}
 
 
 
@@ -412,15 +432,17 @@ int main(void)
     //
     PinMuxConfig();
 
+    // Configure SPI for OLED
+    SPIconfig();
+    // Initialize and turn on OLED
+    Adafruit_Init();
+    fillScreen(WHITE);
+
     // init UART terminal
     InitTerm();
 
     SysTick_Init();
 
-    // Configure SPI for OLED
-    SPIconfig();
-    // Initialize and turn on OLED
-    Adafruit_Init();
 
 
     MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
@@ -431,6 +453,11 @@ int main(void)
     MAP_GPIOIntTypeSet(GPIOA1_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
     MAP_GPIOIntEnable(GPIOA1_BASE, GPIO_PIN_7);
 
+    // Initialize Timer A1 (different from the IR timer) for 2-second counter
+    // Used in multi-tap text functionality
+    Timer_IF_Init(PRCM_TIMERA1, TIMERA1_BASE, TIMER_CFG_ONE_SHOT, TIMER_A, 0);
+    Timer_IF_IntSetup(TIMERA1_BASE, TIMER_A, TimerCallback);
+
 
     //
     // Loop forever while the timers run.
@@ -438,12 +465,15 @@ int main(void)
     Message("start looping");
     while(1)
     {
+        // timer runs for 2 seconds
+        multitap_timeout = false;
+        Timer_IF_Start(TIMERA1_BASE, TIMER_A, 2000);
         // If the watchdog fired, it means the burst is finished
         if (timer_counter == 1 && pulse_idx > 0) {
             timer_counter = 0;
             int rc5_code = decode_RC5();
             print_button(rc5_code);
-            print_OLED(rc5_code);
+            //print_OLED(rc5_code);
             pulse_idx = 0; // Reset for next button press
         }
     }
