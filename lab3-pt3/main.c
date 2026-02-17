@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 // Driverlib includes
 #include "gpio.h"
@@ -307,194 +308,362 @@ static int decode_RC5(void) {
     return (int)(code & 0x3FFFu);
 }
 
-static void print_button(int rc5_code) {
+// Extract current cmd from finished pulse
+int fetch_cmd(int rc5_code) {
     if (rc5_code < 0) {
-        return;
+        return -1;
     }
-
-
-    int cmd  = rc5_code & 0xFF;         // 8-bit command
-    int addr = (rc5_code >> 6) & 0x1F;  // 5-bit address (device type)
-
-    char buf[48];
-
-    // Standard Philips RC-5 TV command codes (address = 0).
-    // "Last" (previous channel) = 0x12 = 18 on most RC-5 remotes.
-    // "Enter" / "OK" / "Zoom"   = 0x0D = 13; adjust if your remote differs.
-    switch (cmd) {
-        case 252:  Message("Button: 0\n\r");          break;
-        case 253:  Message("Button: 1\n\r");          break;
-        case 248:  Message("Button: 2\n\r");          break;
-        case 249:  Message("Button: 3\n\r");          break;
-        case 244:  Message("Button: 4\n\r");          break;
-        case 245:  Message("Button: 5\n\r");          break;
-        case 240:  Message("Button: 6\n\r");          break;
-        case 241:  Message("Button: 7\n\r");          break;
-        case 236:  Message("Button: 8\n\r");          break;
-        case 237:  Message("Button: 9\n\r");          break;
-        case 229: Message("Button: MUTE\n\r");       break;  // 0x12 prev-channel
-        case 184: Message("Button: LAST\n\r"); break;  // 0x0D select/OK
-        default:
-            // Unknown command: print raw values so you can calibrate the table.
-            sprintf(buf, "Unknown: addr=%d cmd=%d (raw=0x%04X)\n\r",
-                    addr, cmd, rc5_code);
-            Message(buf);
-            break;
-    }
+    return rc5_code & 0xFF;
 }
 
-/***********************************************************************************
- * Globals used by printing to OLED
- */
-//**********************************************************************************
-#define ASCII_WIDTH 5
-#define ASCII_HEIGHT 7
 
 /***********************************************************************************
  * Data structures and rules to facilitate multi-tap texting
  */
 //**********************************************************************************
 // set delay for determining if cycling through characters or printing a character
-
-#define DELAY 2e6 // 2s in us
-
-struct ascii_buttons {
-  unsigned char b_0[1];
-  unsigned char b_2[3];
-  unsigned char b_3[3];
-  unsigned char b_4[3];
-  unsigned char b_5[3];
-  unsigned char b_6[3];
-  unsigned char b_7[4];
-  unsigned char b_8[3];
-  unsigned char b_9[4];
+unsigned char alpha_buttons[254][4] = {
+ [252] = {' ', ' ', ' ', '#'},
+ [253] = {'.', ',', '!', '#'},
+ [248] = {'A', 'B', 'C', '#'},
+ [249] = {'D', 'E', 'F', '#'},
+ [244] = {'G', 'H', 'I', '#'},
+ [240] = {'M', 'N', 'O', '#'},
+ [241] = {'P', 'Q', 'R', 'S'},
+ [236] = {'T', 'U', 'V', '#'},
+ [237] = {'W', 'X', 'Y', 'Z'}
 };
 
-struct ascii_buttons alpha = {
- {' '},
- {'A', 'B', 'C'},
- {'D', 'E', 'F'},
- {'G', 'H', 'I'},
- {'J', 'K', 'L'},
- {'M', 'N', 'O'},
- {'P', 'Q', 'R', 'S'},
- {'T', 'U', 'V'},
- {'W', 'X', 'Y', 'Z'}
-};
+//*****************************************************************************
+// Multi-tap state and compose / receive buffers
+//*****************************************************************************
+#define MAX_MSG_LEN  64    // maximum message length (bytes, inc. null)
 
-// Button order: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, Mute, Last }
-int button_cmds[12] = {252, 253, 248, 249, 244, 245, 240, 241, 236, 237, 229, 184};
+// Timer A1 callback sets this flag to commit the pending character
+volatile bool multitap_timeout = false;
 
-// Extract current cmd from finished pulse
-int fetch_cmd(int rc5_code) {
-    if (rc5_code < 0) {
-        return;
-    }
-    return rc5_code & 0xFF;
+// Active tap state
+static int current_tap_cmd = -1;   // cmd code of button being tapped; -1 = none
+static int tap_count       =  0;   // number of taps on current_tap_cmd
+
+// Bottom-half compose buffer
+static char compose_buf[MAX_MSG_LEN];
+static int  compose_len = 0;
+
+// Top-half received-message buffer (written from UART1 ISR)
+static char recv_buf[MAX_MSG_LEN];
+static int  recv_len = 0;
+volatile bool new_message = false;
+
+// Returns the number of valid (non-sentinel) characters for this button.
+// Returns 0 if the command code has no text mapping.
+static int get_taps_size(int cmd)
+{
+    if (cmd < 0 || cmd >= 254)         return 0;
+    if (alpha_buttons[cmd][0] == 0)    return 0;   // uninitialised entry
+    if (cmd == 241 || cmd == 237)      return 4;   // PQRS, WXYZ
+    return 3;
 }
 
 
 // fires after 2 seconds have elapsed
-volatile bool multitap_timeout = false;
 void TimerCallback(void) {
     Timer_IF_InterruptClear(TIMERA1_BASE); // Clear the interrupt
     multitap_timeout = true;               // Set boolean
 }
 
+//*****************************************************************************
+// UART1 – board-to-board (interrupt-driven RX)
+//
+// Pins must be configured in SysConfig (PinMuxConfig):
+//   PIN_07 -> UART1_TX    PIN_08 -> UART1_RX
+// Wire: Board-A TX -> Board-B RX, Board-B TX -> Board-A RX, GND <-> GND.
+//*****************************************************************************
+#define UART1_BAUD_RATE  115200
 
+// ISR staging buffer – builds one line, then copies atomically to recv_buf
+static char uart1_stage[MAX_MSG_LEN];
+static int  uart1_stage_len = 0;
 
-// Given a button press, print the selected character
-static void print_OLED(int rc5_code) {
-    if (rc5_code < 0) {
-          return;
-      }
-
-    int cmd  = rc5_code & 0xFF; // 8-bit command
-
-    fillScreen(WHITE);
-    int x = 0, y = 0;
-    switch (cmd) {
-        case 252:  drawChar(x, y, '0', 1, 1, 1); break;
-        case 253:  drawChar(x, y, '1', 1, 1, 1); break;
-        case 248:  drawChar(x, y, '2', 1, 1, 1); break;
-        case 249:  drawChar(x, y, '3', 1, 1, 1); break;
-        case 244:  drawChar(x, y, '4', 1, 1, 1); break;
-        case 245:  drawChar(x, y, '5', 1, 1, 1); break;
-        case 240:  drawChar(x, y, '6', 1, 1, 1); break;
-        case 241:  drawChar(x, y, '7', 1, 1, 1); break;
-        case 236:  drawChar(x, y, '8', 1, 1, 1); break;
-        case 237:  drawChar(x, y, '9', 1, 1, 1); break;
-        case 229:  drawChar(x, y, 'M', 1, 1, 1); break;
-        case 184:  drawChar(x, y, 'L', 1, 1, 1); break;
-        default:   break;
-    }
-
-}
-
-
-
-int main(void)
+void UART1_Handler(void)
 {
-    //
-    // Initialize board configurations
-    BoardInit();
-    //
-    // Pinmuxing for IR receiver and UART
-    //
-    PinMuxConfig();
+    // Clear all pending UART1 interrupt flags
+    unsigned long status = MAP_UARTIntStatus(UARTA1_BASE, true);
+    MAP_UARTIntClear(UARTA1_BASE, status);
 
-    // Configure SPI for OLED
-    SPIconfig();
-    // Initialize and turn on OLED
-    Adafruit_Init();
-    fillScreen(WHITE);
+    // Drain the RX FIFO
+    while (MAP_UARTCharsAvail(UARTA1_BASE)) {
+        char c = (char)MAP_UARTCharGetNonBlocking(UARTA1_BASE);
 
-    // init UART terminal
-    InitTerm();
-
-    SysTick_Init();
-
-
-
-    MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
-    while(!MAP_PRCMPeripheralStatusGet(PRCM_GPIOA1));
-
-    // Configure physical Pin 06 on rising and falling edges
-    MAP_GPIOIntRegister(GPIOA1_BASE, Remote_Handler);
-    MAP_GPIOIntTypeSet(GPIOA1_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
-    MAP_GPIOIntEnable(GPIOA1_BASE, GPIO_PIN_7);
-
-    // Initialize Timer A1 (different from the IR timer) for 2-second counter
-    // Used in multi-tap text functionality
-    Timer_IF_Init(PRCM_TIMERA1, TIMERA1_BASE, TIMER_CFG_ONE_SHOT, TIMER_A, 0);
-    Timer_IF_IntSetup(TIMERA1_BASE, TIMER_A, TimerCallback);
-
-
-    //
-    // Loop forever while the timers run.
-    //
-    Message("start looping");
-    while(1)
-    {
-        // If the watchdog fired, it means the burst is finished
-        if (timer_counter == 1 && pulse_idx > 0) {
-            timer_counter = 0;
-
-            multitap_timeout = false;
-            Timer_IF_Start(TIMERA1_BASE, TIMER_A, 2000);
-            // multitap_timer runs for 2 seconds
-            int rc5_code = -1;
-            int cmd = 0;
-            while (!multitap_timeout) {
-                rc5_code = decode_RC5();
-                cmd = fetch_cmd(rc5_code);
-
-
+        if (c == '\n' || c == '\r') {
+            // End of message – publish to main loop
+            if (uart1_stage_len > 0) {
+                uart1_stage[uart1_stage_len] = '\0';
+                memcpy(recv_buf, uart1_stage, (unsigned)uart1_stage_len + 1);
+                recv_len           = uart1_stage_len;
+                uart1_stage_len    = 0;
+                new_message        = true;
             }
-            rc5_code = decode_RC5();
-            print_button(rc5_code);
-            //print_OLED(rc5_code);
-            pulse_idx = 0; // Reset for next button press
+        } else if (uart1_stage_len < MAX_MSG_LEN - 1) {
+            uart1_stage[uart1_stage_len++] = c;
         }
     }
 }
+
+static void UART1_Init(void)
+{
+    // 1. Clock the UART1 peripheral
+    MAP_PRCMPeripheralClkEnable(PRCM_UARTA1, PRCM_RUN_MODE_CLK);
+    while (!MAP_PRCMPeripheralStatusGet(PRCM_UARTA1));
+
+    // 2. Configure baud rate and frame format (8-N-1)
+    MAP_UARTConfigSetExpClk(UARTA1_BASE,
+                            MAP_PRCMPeripheralClockGet(PRCM_UARTA1),
+                            UART1_BAUD_RATE,
+                            (UART_CONFIG_WLEN_8  |
+                             UART_CONFIG_STOP_ONE |
+                             UART_CONFIG_PAR_NONE));
+
+    // 3. Register ISR and enable RX + receive-timeout interrupts.
+    //    UART_INT_RT fires when the RX FIFO is non-empty and no new
+    //    character has arrived for 32 bit-periods – catches short messages
+    //    that don't fill the FIFO trigger level.
+    MAP_UARTIntRegister(UARTA1_BASE, UART1_Handler);
+    MAP_UARTIntEnable(UARTA1_BASE, UART_INT_RX | UART_INT_RT);
+
+    // 4. Enable the UART1 interrupt line in the ARM NVIC
+    MAP_IntEnable(INT_UARTA1);
+
+    // 5. Enable UART1
+    MAP_UARTEnable(UARTA1_BASE);
+}
+
+// Send a null-terminated string followed by '\n' over UART1 (blocking TX)
+void UART1_Send(const char *msg)
+{
+    while (*msg) {
+        MAP_UARTCharPut(UARTA1_BASE, (unsigned char)*msg++);
+    }
+    MAP_UARTCharPut(UARTA1_BASE, '\n');
+}
+
+//*****************************************************************************
+// OLED display rendering
+//
+// Characters are drawn with drawChar(x, y, c, color, bg, size=1).
+// At size=1 each cell is CHAR_W=6 px wide × CHAR_H=8 px tall.
+// 128 / 6 = 21 characters per row.
+//*****************************************************************************
+#define OLED_WIDTH      128
+#define OLED_HALF        64     // y where bottom half starts
+
+#define CHAR_W            6     // character cell width  (5 glyph + 1 gap)
+#define CHAR_H            8     // character cell height
+#define MAX_CHARS_ROW    21     // characters that fit in one 128-px row
+
+// Row y-coordinates
+#define RECV_LABEL_Y      2
+#define RECV_MSG_Y       12
+#define SEND_LABEL_Y     (OLED_HALF + 2)    // 66
+#define SEND_MSG_Y       (OLED_HALF + 12)   // 76
+
+// Convenience: draw a C string at (x,y) with explicit colors
+static void draw_text(int x, int y, const char *str,
+                      unsigned int color, unsigned int bg,
+                      unsigned char size)
+{
+    while (*str) {
+        drawChar(x, y, (unsigned char)*str++, color, bg, size);
+        x += CHAR_W * (int)size;
+    }
+}
+
+// Redraw the entire OLED from global state
+void render_display(void)
+{
+    int i;
+
+    // Top half: received message
+    fillRect(0, 0, OLED_WIDTH, (unsigned int)(OLED_HALF - 1), BLACK);
+    draw_text(0, RECV_LABEL_Y, "RECV:", CYAN, BLACK, 1);
+
+    if (recv_len > 0) {
+        // Scroll so the most recent MAX_CHARS_ROW characters are visible
+        int start = (recv_len > MAX_CHARS_ROW) ? recv_len - MAX_CHARS_ROW : 0;
+        for (i = start; i < recv_len; i++) {
+            drawChar((i - start) * CHAR_W, RECV_MSG_Y,
+                     (unsigned char)recv_buf[i], WHITE, BLACK, 1);
+        }
+    }
+
+    // Divider
+    drawFastHLine(0, OLED_HALF - 1, OLED_WIDTH, WHITE);
+
+    // Bottom half: compose area
+    fillRect(0, (unsigned int)OLED_HALF, OLED_WIDTH, (unsigned int)OLED_HALF, BLACK);
+    draw_text(0, SEND_LABEL_Y, "SEND:", YELLOW, BLACK, 1);
+
+    // Scroll the committed portion of the compose buffer
+    int disp_start = (compose_len > MAX_CHARS_ROW) ? compose_len - MAX_CHARS_ROW : 0;
+    for (i = disp_start; i < compose_len; i++) {
+        drawChar((i - disp_start) * CHAR_W, SEND_MSG_Y,
+                 (unsigned char)compose_buf[i], WHITE, BLACK, 1);
+    }
+
+    // Render the currently-cycling (uncommitted) character in YELLOW
+    if (current_tap_cmd >= 0) {
+        int sz = get_taps_size(current_tap_cmd);
+        if (sz > 0) {
+            char c        = (char)alpha_buttons[current_tap_cmd][tap_count % sz];
+            int  disp_pos = compose_len - disp_start;
+            if (disp_pos >= 0 && disp_pos < MAX_CHARS_ROW) {
+                drawChar(disp_pos * CHAR_W, SEND_MSG_Y,
+                         (unsigned char)c, YELLOW, BLACK, 1);
+            }
+        }
+    }
+}
+
+//*****************************************************************************
+// Multi-tap logic
+//*****************************************************************************
+
+// Commit whatever character is currently being cycled into compose_buf,
+// stop the timer, and reset tap state.
+void commit_current_char(void)
+{
+    Timer_IF_Stop(TIMERA1_BASE, TIMER_A);
+
+    if (current_tap_cmd >= 0 && compose_len < MAX_MSG_LEN - 1) {
+        int  sz = get_taps_size(current_tap_cmd);
+        if (sz > 0) {
+            char c = (char)alpha_buttons[current_tap_cmd][tap_count % sz];
+            compose_buf[compose_len++] = c;
+        }
+    }
+
+    current_tap_cmd = -1;
+    tap_count       =  0;
+}
+
+// Restart the 2-second multi-tap commit timer
+static void restart_multitap_timer(void)
+{
+    Timer_IF_Stop(TIMERA1_BASE, TIMER_A);
+    Timer_IF_Start(TIMERA1_BASE, TIMER_A, 2000);   // 2 000 ms one-shot
+}
+
+// Process one decoded remote button press
+static void handle_button(int cmd)
+{
+    if (cmd < 0) return;
+
+    // MUTE (229): send the composed message
+    if (cmd == 229) {
+        commit_current_char();
+        if (compose_len > 0) {
+            compose_buf[compose_len] = '\0';
+            UART1_Send(compose_buf);
+            Message("SENT: ");
+            Message(compose_buf);
+            Message("\n\r");
+            compose_len = 0;
+        }
+        render_display();
+        return;
+    }
+
+    // LAST (184): delete
+    if (cmd == 184) {
+        Timer_IF_Stop(TIMERA1_BASE, TIMER_A);
+        if (current_tap_cmd >= 0) {
+            // Cancel the character currently being cycled; do NOT commit it
+            current_tap_cmd = -1;
+            tap_count       =  0;
+        } else if (compose_len > 0) {
+            compose_len--;
+        }
+        render_display();
+        return;
+    }
+
+    // Text buttons
+    if (get_taps_size(cmd) == 0) return;   // unmapped button – ignore
+
+    if (current_tap_cmd == cmd) {
+        // Same button tapped again: advance to the next character in the set
+        tap_count++;
+        restart_multitap_timer();
+    } else {
+        // Different button: commit whatever was pending, then start fresh
+        commit_current_char();
+        current_tap_cmd = cmd;
+        tap_count       = 0;
+        restart_multitap_timer();
+    }
+
+    render_display();
+}
+
+int main(void)
+{
+    // Hardware initialization
+       BoardInit();
+       PinMuxConfig();
+       SPIconfig();
+
+       Adafruit_Init();
+
+       // UART0: debug output to host (CCS console)
+       InitTerm();
+       Message("Board-to-board texting ready\n\r");
+       Message("MUTE = SEND   LAST = DELETE\n\r");
+
+       // UART1: board-to-board messaging with interrupt-driven RX
+       UART1_Init();
+
+       // SysTick: microsecond pulse timer for IR decoding
+       SysTick_Init();
+
+       // GPIOA1 pin 7: IR receiver input (both edges)
+       MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
+       while (!MAP_PRCMPeripheralStatusGet(PRCM_GPIOA1));
+       MAP_GPIOIntRegister(GPIOA1_BASE, Remote_Handler);
+       MAP_GPIOIntTypeSet(GPIOA1_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
+       MAP_GPIOIntEnable(GPIOA1_BASE, GPIO_PIN_7);
+
+       // Timer A1: one-shot 2-second timer for multi-tap commit
+       Timer_IF_Init(PRCM_TIMERA1, TIMERA1_BASE, TIMER_CFG_ONE_SHOT, TIMER_A, 0);
+       Timer_IF_IntSetup(TIMERA1_BASE, TIMER_A, TimerCallback);
+
+       fillScreen(WHITE);
+       // Draw initial (empty) display
+       //render_display();
+
+       while (1)
+       {
+           // 1. A complete IR burst has arrived – decode and handle it
+           if (timer_counter == 1 && pulse_idx > 0) {
+               timer_counter = 0;
+               int rc5_code = decode_RC5();
+               pulse_idx    = 0;
+               handle_button(fetch_cmd(rc5_code));
+           }
+
+           // 2. Multi-tap timeout fired – commit the pending character
+           if (multitap_timeout) {
+               multitap_timeout = false;
+               commit_current_char();
+               render_display();
+           }
+
+           // 3. A new message arrived over UART1
+           if (new_message) {
+               new_message = false;
+               Message("RECV: ");
+               Message(recv_buf);
+               Message("\n\r");
+               render_display();
+           }
+       }
+   }

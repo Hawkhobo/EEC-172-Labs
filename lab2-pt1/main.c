@@ -83,7 +83,7 @@
 
 #define APPLICATION_VERSION     "1.4.0"
 
-#define SPI_IF_BIT_RATE  1000000
+#define SPI_IF_BIT_RATE  3000000
 #define TR_BUFF_SIZE     100
 
 #define MASTER_MSG       "This is CC3200 SPI Master Application\n\r"
