@@ -168,7 +168,7 @@ void Remote_Handler() {
     // MAX 24-bit representation - last value seen by SysTick
     uint32_t time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
 
-    // reset SysTick value (for next pulse
+    // reset SysTick value (for next pulse)
     HWREG(NVIC_ST_CURRENT) = 0;
 
     // Logic for RC-5/RC-6 protocol
