@@ -328,6 +328,7 @@ unsigned char alpha_buttons[254][4] = {
  [248] = {'A', 'B', 'C', '#'},
  [249] = {'D', 'E', 'F', '#'},
  [244] = {'G', 'H', 'I', '#'},
+ [245] = {'J', 'K', 'L', '#'},
  [240] = {'M', 'N', 'O', '#'},
  [241] = {'P', 'Q', 'R', 'S'},
  [236] = {'T', 'U', 'V', '#'},
@@ -532,8 +533,6 @@ void render_display(void)
 // stop the timer, and reset tap state.
 void commit_current_char(void)
 {
-    Timer_IF_Stop(TIMERA1_BASE, TIMER_A);
-
     if (current_tap_cmd >= 0 && compose_len < MAX_MSG_LEN - 1) {
         int  sz = get_taps_size(current_tap_cmd);
         if (sz > 0) {
@@ -549,8 +548,8 @@ void commit_current_char(void)
 // Restart the 2-second multi-tap commit timer
 static void restart_multitap_timer(void)
 {
-    Timer_IF_Stop(TIMERA1_BASE, TIMER_A);
-    Timer_IF_Start(TIMERA1_BASE, TIMER_A, 2000);   // 2 000 ms one-shot
+    Timer_IF_Stop(TIMERA1_BASE, TIMER_BOTH);
+    Timer_IF_Start(TIMERA1_BASE, TIMER_BOTH, 20000);   // 2 000 ms one-shot
 }
 
 // Process one decoded remote button press
@@ -575,7 +574,6 @@ static void handle_button(int cmd)
 
     // LAST (184): delete
     if (cmd == 184) {
-        Timer_IF_Stop(TIMERA1_BASE, TIMER_A);
         if (current_tap_cmd >= 0) {
             // Cancel the character currently being cycled; do NOT commit it
             current_tap_cmd = -1;
@@ -587,22 +585,22 @@ static void handle_button(int cmd)
         return;
     }
 
-    // Text buttons
-    if (get_taps_size(cmd) == 0) return;   // unmapped button – ignore
+    // MULTI-TAP Logic
+    if (get_taps_size(cmd) > 0) {
+        if (current_tap_cmd == cmd) {
+            // Same button: cycle to next character
+            tap_count++;
+        } else {
+            // Different button: commit the previous one and start new cycle
+            commit_current_char();
+            current_tap_cmd = cmd;
+            tap_count = 0;
+        }
 
-    if (current_tap_cmd == cmd) {
-        // Same button tapped again: advance to the next character in the set
-        tap_count++;
-        restart_multitap_timer();
-    } else {
-        // Different button: commit whatever was pending, then start fresh
-        commit_current_char();
-        current_tap_cmd = cmd;
-        tap_count       = 0;
-        restart_multitap_timer();
+        // RESET THE TIMER: Set value to 0 to restart the 2-second countdown
+        MAP_TimerLoadSet(TIMERA1_BASE, TIMER_A, 0);
+        render_display();
     }
-
-    render_display();
 }
 
 int main(void)
@@ -633,12 +631,10 @@ int main(void)
        MAP_GPIOIntEnable(GPIOA1_BASE, GPIO_PIN_7);
 
        // Timer A1: one-shot 2-second timer for multi-tap commit
-       Timer_IF_Init(PRCM_TIMERA1, TIMERA1_BASE, TIMER_CFG_ONE_SHOT, TIMER_A, 0);
-       Timer_IF_IntSetup(TIMERA1_BASE, TIMER_A, TimerCallback);
+       Timer_IF_Init(PRCM_TIMERA1, TIMERA1_BASE, TIMER_CFG_PERIODIC_UP, TIMER_BOTH, 0);
+       MAP_TimerEnable(TIMERA1_BASE, TIMER_BOTH);
 
-       fillScreen(WHITE);
-       // Draw initial (empty) display
-       //render_display();
+       render_display();
 
        while (1)
        {
@@ -651,10 +647,12 @@ int main(void)
            }
 
            // 2. Multi-tap timeout fired – commit the pending character
-           if (multitap_timeout) {
-               multitap_timeout = false;
-               commit_current_char();
-               render_display();
+           if (current_tap_cmd >= 0) {
+               // Check if 2 seconds (160 million ticks at 80 Mhz) have passed
+               if (MAP_TimerValueGet(TIMERA1_BASE, TIMER_A) > 160000000) {
+                   commit_current_char();
+                   render_display();
+               }
            }
 
            // 3. A new message arrived over UART1
