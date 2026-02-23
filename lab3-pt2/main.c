@@ -4,8 +4,7 @@
 //*****************************************************************************
 //
 // Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
-// 
-// 
+//
 //  Redistribution and use in source and binary forms, with or without 
 //  modification, are permitted provided that the following conditions 
 //  are met:
@@ -35,8 +34,6 @@
 //  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
-
-// Standard include
 #include <stdio.h>
 
 // Driverlib includes
@@ -111,7 +108,7 @@ BoardInit(void)
 // Globals used by SysTick and TV Remote Handler
 //
 //***************************************************
-#define RELOAD 0x00FFFFFF // max value for 24 bits
+#define RELOAD 0x00FFFFFF
 #define TICKS_PER_US 80   // 80MHz clock / 1,000,000
 void SysTick_Handler(void);
 
@@ -137,7 +134,7 @@ volatile uint32_t pulse_buffer[128]; // Buffer to store timings
 volatile uint32_t pulse_idx = 0;
 
 // cross-ISR flag
-volatile int timer_counter = 0; // current timer_count, labelled volatile so hardware (interrupts) can see it
+volatile int timer_counter = 0;
 
 // SysTick Configuration: high-speed down-counter with microsecond pulse precision
 void SysTick_Init(void) {
@@ -163,39 +160,41 @@ void SysTick_Handler() {
 
 // primary logic for interrupt handling and parsing Remote signals
 void Remote_Handler() {
-    // clear interrupt flag for pin 06
+    // clear interrupt flag for physical pin 06
     unsigned long status = MAP_GPIOIntStatus(GPIOA1_BASE, true);
     MAP_GPIOIntClear(GPIOA1_BASE, status);
 
     // Measure elapsed time since last edge
-    // regisers NVIC_ST_CURRENT stores current value of SysTick
+    // MAX 24-bit representation - last value seen by SysTick
     uint32_t time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
 
-    // reset for next pulse
+    // reset SysTick value (for next pulse)
     HWREG(NVIC_ST_CURRENT) = 0;
 
     // Logic for RC-5/RC-6 protocol
     // Look for short 889us and long 1778us pulses
     // Filter noise, but capture everything else
     if (timer_counter == 0) {
-            if (pulse_idx < 128) {
-                int pin_val = MAP_GPIOPinRead(GPIOA1_BASE, GPIO_PIN_7);
-                uint32_t time_us = time_ticks / TICKS_PER_US;
+        // Allow for plenty of edge checks (RC-5 should only have 28), prevent buffer overflow
+        if (pulse_idx < 128) {
+            int pin_val = MAP_GPIOPinRead(GPIOA1_BASE, GPIO_PIN_7);
+            uint32_t time_us = time_ticks / TICKS_PER_US;
 
-                // Store polarity in MSB: 1 = Pulse was HIGH, 0 = Pulse was LOW
-                // Note: If pin is LOW now, the pulse that just ended was HIGH.
-                if (pin_val == 0) {
-                    pulse_buffer[pulse_idx] = time_us | 0x80000000u;
-                } else {
-                    pulse_buffer[pulse_idx] = time_us;
-                }
-                pulse_idx++;
+            // Store polarity in MSB: 1 = Pulse was HIGH, 0 = Pulse was LOW
+            // Note: If pin is LOW now, the pulse that just ended was HIGH.
+            if (pin_val == 0) {
+                // Pulse duration (in microseconds, bit 0-30) and HIGH/LOW polarity (but 31)
+                pulse_buffer[pulse_idx] = time_us | 0x80000000u;
+            } else {
+                pulse_buffer[pulse_idx] = time_us;
             }
-        } else {
-            // New transmission starting
-            timer_counter = 0;
-            pulse_idx = 0;
+            pulse_idx++;
         }
+    // If watchdog fired, new transmission has arrived
+    } else {
+        timer_counter = 0;
+        pulse_idx = 0;
+    }
 }
 
 static int decode_RC5(void) {
@@ -266,9 +265,8 @@ static void print_button(int rc5_code) {
 
     char buf[48];
 
-    // Standard Philips RC-5 TV command codes (address = 0).
-    // "Last" (previous channel) = 0x12 = 18 on most RC-5 remotes.
-    // "Enter" / "OK" / "Zoom"   = 0x0D = 13; adjust if your remote differs.
+    // RC-5 command codes (address = 0).
+    // these were the final command codes after trial and error, and adjusting decode_rc5 main loop to 14-bits
     switch (cmd) {
         case 252:  Message("Button: 0\n\r");          break;
         case 253:  Message("Button: 1\n\r");          break;
@@ -283,10 +281,10 @@ static void print_button(int rc5_code) {
         case 229: Message("Button: MUTE\n\r");       break;  // 0x12 prev-channel
         case 184: Message("Button: LAST\n\r"); break;  // 0x0D select/OK
         default:
-            // Unknown command: print raw values so you can calibrate the table.
-            sprintf(buf, "Unknown: addr=%d cmd=%d (raw=0x%04X)\n\r",
+            // Unknown command: uncomment to print raw values
+            /*sprintf(buf, "Unknown: addr=%d cmd=%d (raw=0x%04X)\n\r",
                     addr, cmd, rc5_code);
-            Message(buf);
+            Message(buf);*/
             break;
     }
 }

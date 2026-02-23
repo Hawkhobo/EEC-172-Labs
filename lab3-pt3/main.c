@@ -35,8 +35,6 @@
 //  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
-
-// Standard include
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -165,7 +163,7 @@ void SPIconfig()
 // Globals used by SysTick and TV Remote Handler
 //
 //***************************************************
-#define RELOAD 0x00FFFFFF // max value for 24 bits
+#define RELOAD 0x00FFFFFF
 #define TICKS_PER_US 80   // 80MHz clock / 1,000,000
 void SysTick_Handler(void);
 
@@ -191,7 +189,7 @@ volatile uint32_t pulse_buffer[128]; // Buffer to store timings
 volatile uint32_t pulse_idx = 0;
 
 // cross-ISR flag
-volatile int timer_counter = 0; // current timer_count, labelled volatile so hardware (interrupts) can see it
+volatile int timer_counter = 0;
 
 // SysTick Configuration: high-speed down-counter with microsecond pulse precision
 void SysTick_Init(void) {
@@ -222,16 +220,17 @@ void Remote_Handler() {
     MAP_GPIOIntClear(GPIOA1_BASE, status);
 
     // Measure elapsed time since last edge
-    // regisers NVIC_ST_CURRENT stores current value of SysTick
+    // MAX 24-bit representation - last value seen by SysTick
     uint32_t time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
 
-    // reset for next pulse
+    // reset SysTick value (for next pulse)
     HWREG(NVIC_ST_CURRENT) = 0;
 
     // Logic for RC-5/RC-6 protocol
     // Look for short 889us and long 1778us pulses
     // Filter noise, but capture everything else
     if (timer_counter == 0) {
+            // Allow for plenty of edge checks (RC-5 should only have 28), prevent buffer overflow
             if (pulse_idx < 128) {
                 int pin_val = MAP_GPIOPinRead(GPIOA1_BASE, GPIO_PIN_7);
                 uint32_t time_us = time_ticks / TICKS_PER_US;
@@ -239,14 +238,15 @@ void Remote_Handler() {
                 // Store polarity in MSB: 1 = Pulse was HIGH, 0 = Pulse was LOW
                 // Note: If pin is LOW now, the pulse that just ended was HIGH.
                 if (pin_val == 0) {
+                    // Pulse duration (in microseconds, bit 0-30) and HIGH/LOW polarity (but 31)
                     pulse_buffer[pulse_idx] = time_us | 0x80000000u;
                 } else {
                     pulse_buffer[pulse_idx] = time_us;
                 }
                 pulse_idx++;
             }
+        // If watchdog fired, new transmission has arrived
         } else {
-            // New transmission starting
             timer_counter = 0;
             pulse_idx = 0;
         }
@@ -374,7 +374,7 @@ void TimerCallback(void) {
 }
 
 //*****************************************************************************
-// UART1 – board-to-board (interrupt-driven RX)
+// UART1 ï¿½ board-to-board (interrupt-driven RX)
 //
 // Pins must be configured in SysConfig (PinMuxConfig):
 //   PIN_07 -> UART1_TX    PIN_08 -> UART1_RX
@@ -382,7 +382,7 @@ void TimerCallback(void) {
 //*****************************************************************************
 #define UART1_BAUD_RATE  115200
 
-// ISR staging buffer – builds one line, then copies atomically to recv_buf
+// ISR staging buffer builds one line, then copies atomically to recv_buf
 static char uart1_stage[MAX_MSG_LEN];
 static int  uart1_stage_len = 0;
 
@@ -392,12 +392,12 @@ void UART1_Handler(void)
     unsigned long status = MAP_UARTIntStatus(UARTA1_BASE, true);
     MAP_UARTIntClear(UARTA1_BASE, status);
 
-    // Drain the RX FIFO
+    // empty RX FIFO
     while (MAP_UARTCharsAvail(UARTA1_BASE)) {
         char c = (char)MAP_UARTCharGetNonBlocking(UARTA1_BASE);
 
         if (c == '\n' || c == '\r') {
-            // End of message – publish to main loop
+            // End of message: publish to main loop
             if (uart1_stage_len > 0) {
                 uart1_stage[uart1_stage_len] = '\0';
                 memcpy(recv_buf, uart1_stage, (unsigned)uart1_stage_len + 1);
@@ -427,7 +427,7 @@ static void UART1_Init(void)
 
     // 3. Register ISR and enable RX + receive-timeout interrupts.
     //    UART_INT_RT fires when the RX FIFO is non-empty and no new
-    //    character has arrived for 32 bit-periods – catches short messages
+    //    character has arrived for 32 bit-periods; catches short messages
     //    that don't fill the FIFO trigger level.
     MAP_UARTIntRegister(UARTA1_BASE, UART1_Handler);
     MAP_UARTIntEnable(UARTA1_BASE, UART_INT_RX | UART_INT_RT);
@@ -450,17 +450,13 @@ void UART1_Send(const char *msg)
 
 //*****************************************************************************
 // OLED display rendering
-//
-// Characters are drawn with drawChar(x, y, c, color, bg, size=1).
-// At size=1 each cell is CHAR_W=6 px wide × CHAR_H=8 px tall.
-// 128 / 6 = 21 characters per row.
 //*****************************************************************************
 #define OLED_WIDTH      128
 #define OLED_HALF        64     // y where bottom half starts
 
-#define CHAR_W            6     // character cell width  (5 glyph + 1 gap)
+#define CHAR_W            6     // character cell width  (5 chars + 1 gap)
 #define CHAR_H            8     // character cell height
-#define MAX_CHARS_ROW    21     // characters that fit in one 128-px row
+#define MAX_CHARS_ROW    21     // 128-px row character width
 
 // Row y-coordinates
 #define RECV_LABEL_Y      2
@@ -468,7 +464,7 @@ void UART1_Send(const char *msg)
 #define SEND_LABEL_Y     (OLED_HALF + 2)    // 66
 #define SEND_MSG_Y       (OLED_HALF + 12)   // 76
 
-// Convenience: draw a C string at (x,y) with explicit colors
+// wrapper: draw a C string at (x,y) with explicit colors
 static void draw_text(int x, int y, const char *str,
                       unsigned int color, unsigned int bg,
                       unsigned char size)
@@ -479,7 +475,7 @@ static void draw_text(int x, int y, const char *str,
     }
 }
 
-// Redraw the entire OLED from global state
+// Redraw the entire OLED given TX/RX conditions
 void render_display(void)
 {
     int i;
@@ -500,11 +496,11 @@ void render_display(void)
     // Divider
     drawFastHLine(0, OLED_HALF - 1, OLED_WIDTH, WHITE);
 
-    // Bottom half: compose area
+    // Bottom half: send area
     fillRect(0, (unsigned int)OLED_HALF, OLED_WIDTH, (unsigned int)OLED_HALF, BLACK);
     draw_text(0, SEND_LABEL_Y, "SEND:", YELLOW, BLACK, 1);
 
-    // Scroll the committed portion of the compose buffer
+    // scrolling for typed character, if the string exceeds 21 characters (stays on one line)
     int disp_start = (compose_len > MAX_CHARS_ROW) ? compose_len - MAX_CHARS_ROW : 0;
     for (i = disp_start; i < compose_len; i++) {
         drawChar((i - disp_start) * CHAR_W, SEND_MSG_Y,
@@ -638,7 +634,7 @@ int main(void)
 
        while (1)
        {
-           // 1. A complete IR burst has arrived – decode and handle it
+           // 1. A complete IR burst has arrived (decode and handle)
            if (timer_counter == 1 && pulse_idx > 0) {
                timer_counter = 0;
                int rc5_code = decode_RC5();
@@ -646,7 +642,7 @@ int main(void)
                handle_button(fetch_cmd(rc5_code));
            }
 
-           // 2. Multi-tap timeout fired – commit the pending character
+           // 2. Multi-tap timeout fired (commit the pending character)
            if (current_tap_cmd >= 0) {
                // Check if 2 seconds (160 million ticks at 80 Mhz) have passed
                if (MAP_TimerValueGet(TIMERA1_BASE, TIMER_A) > 160000000) {
