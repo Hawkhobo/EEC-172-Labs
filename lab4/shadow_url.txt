@@ -1,0 +1,1 @@
+https://a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com/things/ChenFeenstra-CC3200-MCU/shadow
