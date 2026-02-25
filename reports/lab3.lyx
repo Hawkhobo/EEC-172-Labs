@@ -223,6 +223,17 @@ Checkoff Sheet
 
 \end_layout
 
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename ../lab3-checkoff1-signals/ta_checkoff.pdf
+	scale 10
+	rotateOrigin center
+
+\end_inset
+
+
+\end_layout
+
 \end_inset
 
 
@@ -550,7 +561,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -566,7 +577,7 @@ Key 0
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button0.png
+	filename ../lab3-checkoff1-signals/button0.png
 	width 7cm
 
 \end_inset
@@ -586,11 +597,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
-
-\begin_layout Plain Layout
-
-\end_layout
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -606,7 +613,7 @@ Key 1
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button1.png
+	filename ../lab3-checkoff1-signals/button1.png
 	width 7cm
 
 \end_inset
@@ -626,7 +633,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -642,7 +649,7 @@ Key 2
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button2.png
+	filename ../lab3-checkoff1-signals/button2.png
 	width 7cm
 
 \end_inset
@@ -658,7 +665,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -674,7 +681,7 @@ Key 3
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button3.png
+	filename ../lab3-checkoff1-signals/button3.png
 	width 7cm
 
 \end_inset
@@ -690,7 +697,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -706,7 +713,7 @@ Key 4
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button4.png
+	filename ../lab3-checkoff1-signals/button4.png
 	width 7cm
 
 \end_inset
@@ -722,7 +729,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -738,7 +745,7 @@ Key 5
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button5.png
+	filename ../lab3-checkoff1-signals/button5.png
 	width 7cm
 
 \end_inset
@@ -754,7 +761,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -770,7 +777,7 @@ Key 6
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button6.png
+	filename ../lab3-checkoff1-signals/button6.png
 	width 7cm
 
 \end_inset
@@ -786,7 +793,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -802,7 +809,7 @@ Key 7
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button7.png
+	filename ../lab3-checkoff1-signals/button7.png
 	width 7cm
 
 \end_inset
@@ -818,7 +825,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -834,7 +841,7 @@ Key 8
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button8.png
+	filename ../lab3-checkoff1-signals/button8.png
 	width 7cm
 
 \end_inset
@@ -850,7 +857,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -866,7 +873,7 @@ Key 9
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/button9.png
+	filename ../lab3-checkoff1-signals/button9.png
 	width 7cm
 
 \end_inset
@@ -882,7 +889,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -898,7 +905,7 @@ Key Enter
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/buttonenter.png
+	filename ../lab3-checkoff1-signals/buttonenter.png
 	width 7cm
 
 \end_inset
@@ -914,7 +921,7 @@ placement H
 alignment document
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -930,7 +937,7 @@ Key Last
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/buttonlast.png
+	filename ../lab3-checkoff1-signals/buttonlast.png
 	width 7cm
 
 \end_inset
@@ -2613,7 +2620,7 @@ UART Transmission
 
 \begin_layout Plain Layout
 \begin_inset Graphics
-	filename /Users/standard/Documents/GitHub/EEC-172-Labs/lab3-checkoff1-signals/uart .png
+	filename ../lab3-checkoff1-signals/uart .png
 	width 10cm
 
 \end_inset
@@ -2683,6 +2690,10 @@ Wrote the code on Checkoff #3
 
 \begin_layout Enumerate
 Implemented the UI for the messaging interactions
+\end_layout
+
+\begin_layout Enumerate
+Finalized report for submission
 \end_layout
 
 \begin_layout Subsection
