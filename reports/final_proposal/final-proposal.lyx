@@ -1,0 +1,761 @@
+#LyX 2.5 created this file. For more info see https://www.lyx.org/
+\lyxformat 643
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass IEEEtran
+\begin_preamble
+% for subfigures/subtables
+\usepackage[caption=false,font=footnotesize]{subfig}
+
+% color for code
+\usepackage{xcolor}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\end_preamble
+\options journal
+\use_default_options false
+\maintain_unincluded_children no
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures false
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command bibtex
+\index_command default
+\float_placement tbh
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_title "Your Title"
+\pdf_author "Your Name"
+\pdf_bookmarks true
+\pdf_bookmarksnumbered true
+\pdf_bookmarksopen true
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder true
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle false
+\pdf_quoted_options "pdfpagelayout=OneColumn, pdfnewwindow=true, pdfstartview=XYZ, plainpages=false"
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification default
+\crossref_package prettyref
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\backgroundcolor none
+\fontcolor none
+\notefontcolor lightgray
+\boxbgcolor red
+\table_border_color default
+\table_odd_row_color default
+\table_even_row_color default
+\table_alt_row_colors_start 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\docbook_mathml_version 0
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Project Proposal:
+ FM Radio Explorer
+\end_layout
+
+\begin_layout Author
+Jacob Feenstra and Chun-Ho Chen
+\end_layout
+
+\begin_layout Section
+Description
+\end_layout
+
+\begin_layout Standard
+Historically,
+ FM radio provided a dominating medium to organically explore music,
+ curated by the on-air disc jockey.
+ Radio has not enjoyed the popularity it has in the past,
+ with many music listeners opting for streaming services for their discovery.
+ What if we could have the best of both worlds?
+ Introducing our FM Radio Explorer,
+ we devise an embedded system that provides radio tuning capabilities,
+ in addition to providing exploratory information on the current track,
+ all from the same interface.
+\end_layout
+
+\begin_layout Standard
+At a high level,
+ we will use LastFM's public-facing API to query the song & artist name from the FM playback (using the CC3200's WiFi Card).
+ LastFM offers a wide variety of metadata and points of musical exploration,
+ which will be discussed with higher granularity in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Implementation-Goals"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+tuple "list"
+
+\end_inset
+
+.
+ The S10-S3 Univeral Remote and IR Receiver,
+ along with Lab 3's send-receive multi-tap texting,
+ will write to the Digital Signal Processing (DSP) radio module and play a selected FM broadband (for example,
+ 90.3 would correlate to 90.3 FM).
+ An antenna will be utilized to provide greater signal gain,
+ and a peripheral speaker will translate the FM radio to coherent audio.
+ Our system will enable a user to switch between different FM radios seamlessly,
+ and relevant information pulled from LastFM will be indicated on the Adafruit OLED in different views,
+ which the user will be able to interact with.
+ Note all of this will be orchestrated with our Texas Instrument's CC3200 LaunchPad.
+\end_layout
+
+\begin_layout Section
+Design
+\end_layout
+
+\begin_layout Subsection
+Functional Specification 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Functional-Specification"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+State Diagram
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename state_diagram.jpg
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As indicated above,
+ the functional specification
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+We assume the functional specification mainly relates to the UI/UX,
+ and details relevant to user interaction.
+\end_layout
+
+\end_inset
+
+ mainly revolves around two main categories:
+ the use of the universal remote and the OLED display.
+ All of the other technical details are hardware-specific (system architecture),
+ or abstracted away from the user.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Universal Remote
+\bar default
+:
+ A set of buttons are configured for the user to control the FM playback,
+ as well as the current display on the OLED.
+ Planned input involves:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+
+\bar under
+Mute button
+\bar default
+:
+ Mute and unmute the FM playback
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Plus Button (VOL)
+\bar default
+:
+ Raise the volume of the FM playback to a pre-defined threshold.
+ Specifically applies to left volume button on remote.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Minus button (VOL)
+\bar default
+:
+ Lower the volume of the FM playback until it is no longer audible.
+ Specifically applies to left volume button on remote.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Numerical multi-tap buttons:
+
+\bar default
+ Use the numerical buttons to specify the FM radio frequency.
+ Buttons 0-9 map to these numbers.
+ Will leverage the Lab 3 multi-tap algorithm with some modifications to allow for punctuation and alphabetical symbols,
+ with the puncutation (such as a period) being reserved for the Button 1 multi-tap.
+ For instance,
+ to tune into 90.3 FM (our local college radio!),
+ you would type in 
+\begin_inset Quotes eld
+\end_inset
+
+90.3
+\begin_inset Quotes erd
+\end_inset
+
+,
+ tapping the 0 button twice for the period.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Enter button
+\bar default
+:
+ Pressing this button will send the currently typed input (as described in d) to be queried against the radio module.
+ If it matches with an FM broadband,
+ that broadband will played!
+ Any erroneous or unrecognized input will prompt the user to try again.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Delete button:
+
+\bar default
+ Delete the last character entered while input is pending.
+ Note this is a nice to have,
+ and if our Delete button is not working (something which occurred in Lab 3),
+ we will simply opt for the user to recycle the input by pressing enter.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Last button
+\bar default
+:
+ Playback the last FM radio signal visited.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Left Arrow
+\bar default
+:
+ Navigate to an OLED view to the left.
+ Each view will be accessible from a 
+\begin_inset Quotes eld
+\end_inset
+
+banner menu
+\begin_inset Quotes erd
+\end_inset
+
+ at the top of the OLED,
+ not dissimilar to traditional graphical interfaces in software.
+ Clicking the left arrow will 
+\begin_inset Quotes eld
+\end_inset
+
+switch
+\begin_inset Quotes erd
+\end_inset
+
+ to another view,
+ which will refresh the entire OLED display and highlight the relevant entry on the banner.
+ If at the end of the banner,
+ left-clicking cycles to the rightmost entry in the banner.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Right arrow:
+
+\bar default
+ Similar functionality to the left arrow,
+ but for the entry to the right of the current entry.
+ If at the rightmost entry in the banner,
+ right-clicking cycles to the leftmost entry in the banner.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+\bar under
+OLED Display
+\bar default
+:
+ What is presented on the OLED display,
+ and navigable by the left and right arrows on the remote.
+ Relevant information to currently playing song an artist.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+
+\bar under
+Radio view
+\bar default
+:
+ Shows the current FM radio song playing,
+ current song playing,
+ the artist,
+ and track progression.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Album cover view:
+
+\bar default
+ Shows a 128x128 JPEG image of the album cover of the song currently playing
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Similar artists view:
+
+\bar default
+ Shows a list of similar artists (compared against the artist currently playing).
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Artist Biography
+\bar default
+:
+ Shows biography of the artist currently playing
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Genre tags
+\bar default
+:
+ Indicates genres of the current song playing.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Similar tracks
+\bar default
+:
+ Shows songs similar to the song currently playing.
+\end_layout
+
+\begin_layout Enumerate
+
+\bar under
+Song lyrics
+\bar default
+:
+ If queryable through musixmatch (a lyrics database used by Spotify,
+ LastFM,
+ and more),
+ shows the lyrics of the song playing (not time-synced).
+ Otherwise,
+ indicates that lyrics are not currently available.
+\end_layout
+
+\end_deeper
+\begin_layout Subsection
+System Architecture
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Architectural Diagram
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system_implementation.jpg
+	scale 25
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Using a Digital Signal Processing (DSP) Radio Module with an antenna,
+ we can reliably pick up on FM radiowaves.
+ The DSP uses I2C to send carrier information to the microcontroller.
+ Namely,
+ we are interested in the Radio Data System (RDS),
+ which encodes information in the FM signal,
+ namely the song title and playing artist.
+\end_layout
+
+\begin_layout Standard
+The DSP also manages an analog path to the amplifier and speaker assembly over I2C.
+ Any signals sent to the DSP (mute,
+ volume up,
+ volume down,
+ etc) will be interpreted by the DSP and sent to the speaker.
+ The amplifier boosts the gain on our speaker.
+ An FM antenna will be attached to ensure clear FM signal inference.
+\end_layout
+
+\begin_layout Standard
+DSP's I2C also relays the RDS metadata,
+ which will be inputted to the LastFM API.
+ HTTP GET responses will fetch relevant song & artist information from the website.
+ Thus this I2C SDA will both provide 
+\emph on
+and
+\emph default
+ receive data (provide LastFM input,
+ receive requests to manipulate speaker volume).
+ The DSP will also need two 4.7 kiloOhm resistors on it's I2C lines to ensure reliable response.
+\end_layout
+
+\begin_layout Standard
+The Universal Remote and IR Receiver components are identical to Lab 3,
+ but we will modify the multi-tap text algorithm further to meet the specifications indicated in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Functional-Specification"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+tuple "list"
+
+\end_inset
+
+.
+ With these specifications,
+ we can control the views on the OLED display,
+ which will be populated by GET responses from the LastFM API.
+\end_layout
+
+\begin_layout Section
+Implementation Goals 
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Implementation-Goals"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Minimal
+\end_layout
+
+\begin_layout Enumerate
+Implemented DSP radio module with speaker
+\end_layout
+
+\begin_layout Enumerate
+Queryable RDS which displays currently playing song on OLED Display (this single view is our most minimal prototype)
+\end_layout
+
+\begin_layout Enumerate
+Extended multi-tap remote/IR module to reliably target different FM signals.
+\end_layout
+
+\begin_layout Enumerate
+Working LastFM API with an interface to C for various HTTP GET request/responses.
+\end_layout
+
+\begin_layout Subsection
+Target
+\end_layout
+
+\begin_layout Enumerate
+Complete,
+ UI/UX friendly radio view:
+ includes song and artist information,
+ current progression in song,
+ signal strength of FM radio,
+ radio currently playing (with it's callsign).
+\end_layout
+
+\begin_layout Enumerate
+Album cover view:
+ full 128x128 JPEG of relevant album cover for currently playing song.
+ Color mapped,
+ and using the TJpgDec JPEG library to accomodate for the CC3200's smaller RAM (loading the image line-by-line).
+ The trickiest part of our software suite.
+\end_layout
+
+\begin_layout Enumerate
+Similar artists view:
+ List of artists similar to the one currently playing.
+\end_layout
+
+\begin_layout Enumerate
+Artist biography view:
+ Print out artist biography on OLED,
+ make sure it is scrollable
+\end_layout
+
+\begin_layout Enumerate
+Genre tags:
+ List relevant genres for the currently playing song.
+\end_layout
+
+\begin_layout Enumerate
+Similar tracks:
+ List similar tracks for the currently playing song.
+\end_layout
+
+\begin_layout Enumerate
+Song lyrics:
+ List song lyrics (if available through Musixmatch) for the currently playing song
+\end_layout
+
+\begin_layout Enumerate
+Remote functionality:
+ volume up/down functionality,
+ Mute functionality,
+ playback last FM radio.
+\end_layout
+
+\begin_layout Subsection
+Stretch
+\end_layout
+
+\begin_layout Enumerate
+Interactive recommender system:
+ Click on a recommended artist to view their artist bio,
+ and top tracks.
+ Click on a recommended track to see it's genre tags,
+ and what it's recommended tracks are.
+\end_layout
+
+\begin_layout Enumerate
+Complete FM History:
+ Allow for a complete history of the FM radio's visited thus far,
+ and allow the user to click and visit a previous one.
+ For an 
+\emph on
+extra
+\emph default
+ stretch goal,
+ allow the user to view what they heard on this FM radio.
+ An even further stretch goal would be to persist this information across runtimes of the system.
+\end_layout
+
+\begin_layout Enumerate
+Channel tuning:
+ Use the channel/paging minus and plus buttons on the remote to flip between FM radio signals reliably.
+ Would require a consistent step-size and bounds check algorithm.
+\end_layout
+
+\begin_layout Section
+Bill of Materials
+\end_layout
+
+\begin_layout Standard
+Surprisingly,
+ the materials come out pretty cheap!
+ We even doubled up on certain materials to ensure we can both test our microcontrollers separately,
+ and have extras in case of duds.
+\end_layout
+
+\begin_layout Enumerate
+FM Antenna (2x,
+ $7.99):
+ using a POBADY Telescopic with SMA connector 73.5 cm model available on Amazon.
+\end_layout
+
+\begin_layout Enumerate
+Speaker (4x,
+ $5.49):
+ using a YXQ 32mm 1W 8 Ohm round metal shell model available on Amazon.
+\end_layout
+
+\begin_layout Enumerate
+DSP Radio Module (4x,
+ $8.89):
+ using a Create Idea RDA5807M FM Stereo Receiver available on Amazon.
+\end_layout
+
+\begin_layout Enumerate
+Stereo Amplifier (3x,
+ $4.75):
+ using a VKLSVAN PAM8403 Module Digital Power Amplifier Board (Class D),
+ available on Amazon.
+\end_layout
+
+\begin_layout Enumerate
+Universal Remote (2x,
+ provided by EEC 172)
+\end_layout
+
+\begin_layout Enumerate
+IR Receiver (2x,
+ provided by EEC 172)
+\end_layout
+
+\begin_layout Enumerate
+CC3200 MCU (2x,
+ provided by EEC 172)
+\end_layout
+
+\begin_layout Enumerate
+Adafruit SSD1351 OLED Display (2x,
+ provided by EEC 172)
+\end_layout
+
+\begin_layout Enumerate
+3 resistors,
+ 1 capacitor (should be provided in EEC 172 lab)
+\end_layout
+
+\begin_layout Standard
+Total costs come out to 
+\bar under
+$27.12
+\bar default
+.
+ 
+\end_layout
+
+\end_body
+\end_document
