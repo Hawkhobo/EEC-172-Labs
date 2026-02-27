@@ -209,7 +209,7 @@ placement H
 alignment center
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -217,6 +217,16 @@ status open
 \begin_layout Plain Layout
 Checkoff Sheet
 \end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lab_4_verification.jpg
+	scale 35
 
 \end_inset
 
@@ -1557,7 +1567,7 @@ placement document
 alignment document
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \begin_inset Caption Standard
@@ -1565,16 +1575,6 @@ status open
 \begin_layout Plain Layout
 UART Transmission
 \end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Graphics
-	filename ../lab3-checkoff1-signals/uart .png
-	width 10cm
 
 \end_inset
 

@@ -22,6 +22,7 @@
 # temp lyx files
 \#*.lyx\#
 *.lyx~
+*lyx.emergency
 
 
 # Ignore LastFM API keys. will be exposed to application as an env variable
