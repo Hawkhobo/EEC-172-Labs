@@ -440,78 +440,141 @@ Goals
 \end_layout
 
 \begin_layout Standard
-There are three checkoff tasks split among 4 parts associated with this lab section.
-\end_layout
-
-\begin_layout Subsection
-IR Receiver and Remote Setup
-\end_layout
-
-\begin_layout Itemize
-This was the simplest task,
- since we just needed to assemble the circuit to make the IR receiver function 
-\end_layout
-
-\begin_layout Itemize
-We also needed to encode our AT&T remotes with their specific codes for our group so we don't interfere with other people's commands(1001) 
-\end_layout
-
-\begin_layout Subsection
-Capturing and Characterizing IR Transmissions
-\end_layout
-
-\begin_layout Itemize
-Using Saleae Logic Analyzer from last lab,
- we then pressed the buttons that would be used in the next part of the lab to detect what their waveforms look like.
- We got and idea of what we are trying to decode from this.
+In this lab section,
+ we have 4 checkoff tasks which build off of eachother.
  
 \end_layout
 
-\begin_layout Subsubsection*
+\begin_layout Subsection
 Checkoff Task 1
 \end_layout
 
-\begin_layout Itemize
-This checkoff requires us to manually decode the codes given the waveforms and knowledge of RC5 protocol,
- however we can do this using the program built for Checkoff Task 2
+\begin_layout Subsubsection
+Connecting to AWS and Updating the Device Shadow
 \end_layout
 
-\begin_layout Subsection
-Decoding IR Transmissions / Application Program
-\end_layout
+\begin_layout Standard
+In this checkoff,
+ we create an Amazon Web Services (AWS) IoT API account (for use with embedded systems),
+ configure it for our CC3200 microcontroller,
+ set up certificates by converting them to 
+\family typewriter
+.der
+\family default
+ or to 
+\family typewriter
+.pem
+\family default
+ files,
+ and flash them to the microcontroller.
+ Setting up an AWS account is simple,
+ but configuring the microcontroller involves creating certificates,
+ enabling policies (for HTTP GET and HTTP POST request/responses to and from the microcontroller),
+ and attaching them to a device shadow,
+ which is a virtual representation of the underlying hardware (a 
+\begin_inset Quotes eld
+\end_inset
 
-\begin_layout Itemize
-We needed to figure out how to determine with code what the midpoint of each bit is,
- and to see if it's transitioning from low–> high or from high–>low 
-\end_layout
+thing
+\begin_inset Quotes erd
+\end_inset
 
-\begin_layout Subsubsection*
-Checkoff Task 2
-\end_layout
-
-\begin_layout Itemize
-We wanted to create a simple program that when you press a button,
- it just prints an output on what key you pressed on the serial monitor.
+ in AWS nomenclature).
+ While it is many steps,
+ it allows for signifciant fine-tuned control of functionalities extended for the microcontroller,
+ while ensuring that only your account is permitted to use these functionalities.
  
 \end_layout
 
+\begin_layout Standard
+Next steps involve downloading the certificate keys,
+ and using 
+\family typewriter
+OpenSSL
+\family default
+ to change their file extension for use in a Texas Instruments CCS environment.
+ Once this is done,
+ they can be flashed to the target microcontroller using the UniFlash software,
+ which enables the necessary permissions needed for AWS to work with the CC3200.
+\end_layout
+
+\begin_layout Standard
+This checkoff sets us up for the remainder of the lab,
+ but also illustrates the steps & certificates needed to use web services in an embedded systems context,
+ which is vital for using them in our Internet of Things world,
+ and extending the capabilities of microcontrollers.
+\end_layout
+
+\begin_layout Subsubsection
+
+\family typewriter
+GetThingShadow
+\family default
+ and 
+\family typewriter
+UpdateThingShadow
+\family default
+ Policies in CCS Code
+\end_layout
+
+\begin_layout Standard
+The second part of the first checkoff has us writing actual code,
+ modifying an example program that uses AWS API calls to post JSON to the device shadow,
+ and fetch it.
+ We get some appreciation for the underlying socket and network libraries,
+ and how they are used with timestamping and a WLAN connection to allow for communication between microcontroller and AWS.
+ This WLAN connection comes in the form of hotspotting our computer (the machine running the microcontroller) with our phones.
+ Properly using this as our Access Point involves formatting 
+\family typewriter
+common.h
+\family default
+ appropriately.
+ We also get a feel for proper formatting of API endpoints in 
+\family typewriter
+main.c
+\family default
+,
+ by reusing code to make an HTTP GET function.
+ These details will be discussed in methods,
+ but ultimately,
+ we get an appreciation for TCP/IP layers and their role in communication with a cloud platform,
+ and how to send HTTP API endpoints to this platform.
+\end_layout
+
 \begin_layout Subsection
-Board to Board Texting via UART
+Using SNS to Send a Message to Email
 \end_layout
 
-\begin_layout Itemize
-In Checkoff 2,
- we include everything,
- combining both OLED's as well as both IR circuits enabling the ability to text from board-to-board through the UART .
+\begin_layout Standard
+In this checkoff,
+ we start to explore some of the more interesting & useful functionality that a web service can offer.
+ We get a feel for AWS topics and rules,
+ building blocks in the AWS ecosystems which allow a variety of protocols to trigger when our device shadow gets updated (in our case,
+ an HTTP POST is sent to the shadow).
+ Using the Simple Notification Service,
+ an email can be sent from the device.
+ We also experiment with JSON message syntax to get a clean,
+ coherent email to a handle of our choice,
+ using SQL-like formatting.
+ This checkoff gives us an appreciation for careful I/O control of web service endpoints,
+ and setting up other parts of the ecosystem that work in concert with the generic HTTP endpoints.
 \end_layout
 
-\begin_layout Subsubsection*
-Checkoff Task 3
+\begin_layout Subsection
+Integrate IR Remote Texting
 \end_layout
 
-\begin_layout Itemize
-After proving to the TA that our in-person program works,
- we then had to use the Saleae to verify that there were UART to UART communications taking place.
+\begin_layout Standard
+Lastly,
+ we modify our code from the final checkoff in Lab 3 to create multi-tap texting with the SNS topic,
+ rule-based AWS system!
+ By storing the value in a buffer,
+ we can send this buffer as input to the AWS HTTP POST response (specifically when the send button is hit).
+ Since both of these codebases are massive,
+ a huge part of this deliverable is being able to wrap our heads around combining the functionality of each gracefully.
+ The rule picks up on the posting,
+ and extracts the payload,
+ which then sends it over SNS.
 \end_layout
 
 \begin_layout Section
