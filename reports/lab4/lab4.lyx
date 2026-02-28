@@ -446,7 +446,7 @@ In this lab section,
 \end_layout
 
 \begin_layout Subsection
-Checkoff Task 1
+Checkoff Task I
 \end_layout
 
 \begin_layout Subsubsection
@@ -542,7 +542,8 @@ main.c
 \end_layout
 
 \begin_layout Subsection
-Using SNS to Send a Message to Email
+Checkoff Task II:
+ Using SNS to Send a Message to Email
 \end_layout
 
 \begin_layout Standard
@@ -561,7 +562,8 @@ In this checkoff,
 \end_layout
 
 \begin_layout Subsection
-Integrate IR Remote Texting
+Checkoff Task III:
+ Integrate IR Remote Texting
 \end_layout
 
 \begin_layout Standard
