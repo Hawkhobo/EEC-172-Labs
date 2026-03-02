@@ -107,6 +107,7 @@
 \papersides 1
 \paperpagestyle default
 \tablestyle default
+\listings_params "breaklines=true,tabsize=2"
 \tracking_changes false
 \output_changes false
 \change_bars false
@@ -628,12 +629,17 @@ sl_DevSet()
  It will not work properly over the HTTP protocol without establishing an accurate date for the transaction.
 \end_layout
 
+\begin_deeper
 \begin_layout Enumerate
 We further specify what server we are querying.
  In our case,
  the server where our device shadow lives corresponds to 
 \family typewriter
-a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com
+a3i55f5e4s85vq-ats.iot.us-east-1.
+\begin_inset Newline linebreak
+\end_inset
+
+amazonaws.com
 \family default
 ,
  which is using the US East 1 server (West Virginia) as requested in the first part of the lab.
@@ -655,6 +661,7 @@ a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com
  which will be is used in the headers for the HTTP requests by AWS.
 \end_layout
 
+\end_deeper
 \begin_layout Enumerate
 The CC3200 is connected to the local access point using 
 \family typewriter
@@ -963,7 +970,7 @@ In our program flow,
 POST
 \family default
  is called first.
- Once this is posted,
+ Once this is invoked,
  
 \family typewriter
 GET
@@ -984,7 +991,14 @@ http_post()
 \end_layout
 
 \begin_layout Subsection
-Using SNS to Send a Message to Email
+Using SNS to Send a Message to Email 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Using-SNS-to"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -1006,7 +1020,11 @@ EMAIL
  we are ready to start pushing messages.
  The topic created ends up being
 \family typewriter
- $aws/things/ChenFeenstra-CC3200-MCU/shadow/update/accepted
+ $aws/things/ChenFeenstra-CC3200-MCU/
+\begin_inset Newline linebreak
+\end_inset
+
+shadow/update/accepted
 \family default
 .
  We'll see how this plays with the IoT rule.
@@ -1058,9 +1076,9 @@ Hello phone,
 \begin_inset Quotes erd
 \end_inset
 
- via e-mail.
-
+ 
 \family default
+from e-mail.
  
 \end_layout
 
@@ -1099,6 +1117,16 @@ snprintf()
 \family default
  is used prior for formatting,
  but this is effectively all the change made to the API to get the SNS texting to work.
+ We specificlaly call this function when the 
+\family typewriter
+send
+\family default
+ button is hit (defined as the 
+\family typewriter
+MUTE
+\family default
+ button from our previous lab),
+ and send over the buffer storing the current string being typed to the OLED display.
 \end_layout
 
 \begin_layout Standard
@@ -1126,6 +1154,76 @@ handle_button()
  The steps from Section 
 \begin_inset CommandInset ref
 LatexCommand ref
+reference "subsec:Using-SNS-to"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+tuple "list"
+
+\end_inset
+
+ ensure that the formatting is clean.
+\end_layout
+
+\begin_layout Section
+Discussion
+\end_layout
+
+\begin_layout Standard
+While working on this lab,
+ we did not run into any significant issues,
+ but it is worthwhile to report the ones that we did encounter and how they were overcame
+\end_layout
+
+\begin_layout Enumerate
+In Checkoff 1,
+ it was critical to be very careful about the certification file conversion and flashing.
+ We found that this 
+\emph on
+had
+\emph default
+ to be done with 
+\family typewriter
+OpenSSL 
+\family default
+version 1.1.1,
+ or it simply would not work.
+ The command-line syntax also had to be exact.
+\end_layout
+
+\begin_layout Enumerate
+Also in Checkoff 1,
+ getting the local access point to play nicely had some problems.
+ We found that one of our iOS devices simply was not compatible with establishing the AWS connection over HTTP.
+ This required some troubleshooting on our part.
+ Fortunately,
+ in terms of the code in Checkoff 1,
+ this was the only hurdle we really experienced.
+ Getting 
+\family typewriter
+http_post()
+\family default
+ and 
+\family typewriter
+http_get()
+\family default
+ to work afterwards was pretty seamless.
+\end_layout
+
+\begin_layout Enumerate
+Checkoff 2 took some work to get nice formatting for the SNS message.
+ 
+\color red
+[FILL OUT DETAILS HERE]
+\end_layout
+
+\begin_layout Enumerate
+We anticipated a lot of difficulty when working with Checkoff 3,
+ since we were effectively merging two codebases from two different parts of the class.
+ As mentioned in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
 reference "subsec:Integrate-IR-Remote"
 plural "false"
 caps "false"
@@ -1135,38 +1233,27 @@ tuple "list"
 
 \end_inset
 
- ensure that the formatting is clean
-\end_layout
-
-\begin_layout Section
-Discussion
-\end_layout
-
-\begin_layout Standard
-While there were some difficulties with this lab,
- this had significantly less issues setting up and diagnosing problems,
- but there were still humps in the way.
-\end_layout
-
-\begin_layout Enumerate
-CCS project issues:
- After just accepting the issues that comes with editing projects,
- not touching the structure itself but putting different main/additional files fixed any building issues.
-\end_layout
-
-\begin_layout Enumerate
-Hardware issues:
- We found during the implementation of a couple pins on the MCU's that the Pin03 on one of them was broken off.
- We rectified it by just simply using the female header underneath.
- We also purchased USB-C to Micro-USB cables,
- so it effectively solved any remaining hardware issues in connecting to the laptop.
- 
-\end_layout
-
-\begin_layout Enumerate
-Header Issues:
- For some reason the timer code was stuck in Milliseconds while our code ran in microseconds,
- so we had to edit the headers themselves to fix the issue.
+,
+ it ended up being as simple as just plugging 
+\family typewriter
+http_post()
+\family default
+ into the conditional body when our 
+\family typewriter
+send
+\family default
+ button is pressed on the remote.
+ We also had to be careful about ensuring that all of the configuration from both checkoffs was preserved,
+ which took some time;
+ there was also some dependency issues that arose when working in this new CCS project,
+ which was expected given how many libraries are used.
+ After carefully resolving these errors,
+ the 
+\family typewriter
+http_post()
+\family default
+ worked flawlessly,
+ and we got a nicely formatted message over SNS.
 \end_layout
 
 \begin_layout Section
@@ -1182,23 +1269,16 @@ My contributions are as follows:
 \end_layout
 
 \begin_layout Enumerate
-Wrote code on Checkoff #2
+Wrote code on Checkoff #1
 \end_layout
 
 \begin_layout Enumerate
-Collected waveforms through the Saleae
+Combined codebases and diagnosed issues in Checkoff #4
 \end_layout
 
 \begin_layout Enumerate
-Wrote the code on Checkoff #3
-\end_layout
-
-\begin_layout Enumerate
-Implemented the UI for the messaging interactions
-\end_layout
-
-\begin_layout Enumerate
-Finalized report for submission
+Wrote Sections 3-5 in the repot,
+ and some of Section 6.
 \end_layout
 
 \begin_layout Subsection
