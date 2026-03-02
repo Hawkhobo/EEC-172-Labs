@@ -715,7 +715,13 @@ strcpy()
 strlen()
 \family default
 ) and some temporary buffers to store data,
- we can carefully construct the payload line by line.
+ we can carefully construct the payload line by line,
+ then send it,
+ all in 
+\family typewriter
+http_post()
+\family default
+.
  This also includes newline and carriage return control characters,
  which are represented in their human-readable format.
  When all is finished,
@@ -851,7 +857,7 @@ Sending this data over the network is as simple as invoking the
 sl_Send()
 \family default
  function from the SimpleLink library,
- with 3 parameters:
+ with 4 parameters:
  
 \end_layout
 
@@ -909,19 +915,227 @@ Flags
 And that is it!
  At this point,
  the packet has been sent,
- and with luck the JSON will appear on the Thing entry of the device shadow.
+ and if all the configuration steps were accurate,
+ the JSON will appear on the device shadow after calling 
+\family typewriter
+POST
+\family default
+.
+ 
 \end_layout
 
 \begin_layout Subsubsection
 HTTP Get Anatomy
 \end_layout
 
+\begin_layout Standard
+The anatomy and packet serialization for the 
+\family typewriter
+GET
+\family default
+ endpoint is virtually identical to 
+\family typewriter
+POST
+\family default
+.
+ The only change is the first header in the payload,
+ which is:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+GET /things/ChenFeenstra-CC3200-MCU/shadow HTTP/1.1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In our program flow,
+ 
+\family typewriter
+POST
+\family default
+ is called first.
+ Once this is posted,
+ 
+\family typewriter
+GET
+\family default
+ uses the same payload and retrieves it.
+ This all happens in 
+\family typewriter
+http_get()
+\family default
+.
+ With the exception of the different header,
+ the logic is the same as 
+\family typewriter
+http_post()
+\family default
+.
+ 
+\end_layout
+
 \begin_layout Subsection
 Using SNS to Send a Message to Email
 \end_layout
 
+\begin_layout Standard
+We can now use Simple Notification Service (SNS) over AWS,
+ a lightweight messaging protocol,
+ to send an e-mail to an account of our choice using the microcontroller.
+ This requires some configuration specific to the web service.
+ AWS is organized into modules to perform functions on IoT devcies;
+ SNS allows for push messages!
+ We create an SNS topic,
+ then a subscription for it with the 
+\emph on
+EMAIL
+\emph default
+ protocol for texting,
+ and specify an endpoint to receive these messages (in this case,
+ we each used our UC Davis emails).
+ Once we confirm the subscription for this email,
+ we are ready to start pushing messages.
+ The topic created ends up being
+\family typewriter
+ $aws/things/ChenFeenstra-CC3200-MCU/shadow/update/accepted
+\family default
+.
+ We'll see how this plays with the IoT rule.
+\end_layout
+
+\begin_layout Standard
+Now,
+ we can also set up an IoT rule for this SNS topic.
+ The nature of the rule means that the specified message will be sent every time the device shadow is updated (in the nature of our program,
+ when it receives an HTTP endpoint).
+ We specifically set up an ACT (Message Routing rule).
+ 
+\end_layout
+
+\begin_layout Standard
+The tricky part is getting the formatting just right.
+ AN SQL statement can be used to improve on this format.
+ The one we found that resulted in a clean,
+ JSON-schema free format in our email is as follows:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+SELECT VALUE state.desired.message FROM '$aws/things/ChenFeenstra-CC3200-MCU/shadow/update/accepted'
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This specific SQL extracts the value of the JSON message from our topic,
+ recursing into the relevant part of the JSON.
+ It takes this message from an attribute in the device shadow.
+ Once we run our program again,
+ we get the message 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Hello phone,
+ message from CC3200 via AWS IoT!
+\begin_inset Quotes erd
+\end_inset
+
+ via e-mail.
+
+\family default
+ 
+\end_layout
+
 \begin_layout Subsection
-Integrate IR Remote Texting
+Integrate IR Remote Texting 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Integrate-IR-Remote"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This step involves reusing the code from Lab 3 Checkoff 3 to perform texting with the universal remote!
+ Most of the work involves combining this code with Lab 4 Checkoff 1,
+ but there is a couple of notable details to keep in mind.
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+handle_button()
+\family default
+ is where most of the modification happens (our Lab 3 report details the API from this checkoff in more detail).
+ Instead of sending it via the UART protocol,
+ we run 
+\family typewriter
+http_post(lRetVal)
+\family default
+ in this function.
+ 
+\family typewriter
+snprintf()
+\family default
+ is used prior for formatting,
+ but this is effectively all the change made to the API to get the SNS texting to work.
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+main()
+\family default
+ undergoes some prominent changes to get the two codebases working together,
+ but it mostly consists of combining the two 
+\family typewriter
+main()
+\family default
+ functions,
+ allowing them to work in concert.
+ Most of the logic happens with the HTTP endpoint call in 
+\family typewriter
+handle_button()
+\family default
+.
+ Surprisingly,
+ once we did this,
+ the entire thing worked out of the box;
+ we were capable of sending text messages to our e-mails,
+ and composing them with the universal remote.
+ The steps from Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Integrate-IR-Remote"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+tuple "list"
+
+\end_inset
+
+ ensure that the formatting is clean
 \end_layout
 
 \begin_layout Section
