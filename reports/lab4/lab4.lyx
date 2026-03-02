@@ -446,11 +446,11 @@ In this lab section,
 \end_layout
 
 \begin_layout Subsection
-Checkoff Task I
+Connecting to AWS and Updating the Device Shadow
 \end_layout
 
 \begin_layout Subsubsection
-Connecting to AWS and Updating the Device Shadow
+Connecting to AWS
 \end_layout
 
 \begin_layout Standard
@@ -506,15 +506,7 @@ This checkoff sets us up for the remainder of the lab,
 \end_layout
 
 \begin_layout Subsubsection
-
-\family typewriter
-GetThingShadow
-\family default
- and 
-\family typewriter
-UpdateThingShadow
-\family default
- Policies in CCS Code
+Updating the Device Shadow
 \end_layout
 
 \begin_layout Standard
@@ -583,1072 +575,353 @@ Lastly,
 Methods
 \end_layout
 
-\begin_layout Standard
-Now,
- we detail the execution of the three checkoffs for Lab 3,
- and the how & why of arriving at that execution.
-\end_layout
-
 \begin_layout Subsection
-IR Receiver and Remote Setup
-\end_layout
-
-\begin_layout Itemize
-We had to determine which type of IR receiver we got,
- and we found that it was the TSOP311xx/313/xx/315xx version,
- which meant we had to tweak the circuit diagram as given for compatibility
-\end_layout
-
-\begin_layout Subsection
-Capturing and Characterizing IR Transmissions
+Connecting to AWS and Updating the Device Shadow
 \end_layout
 
 \begin_layout Standard
-Now that we had the circuit,
- we then needed to use the Saleae to capture the waveforms of each key
-\end_layout
-
-\begin_layout Subsubsection*
-Checkoff Task 1
-\end_layout
-
-\begin_layout Subsection
-Decoding IR Transmissions / Application Program
-\end_layout
-
-\begin_layout Subsubsection*
-Checkoff Task 2
-\end_layout
-
-\begin_layout Standard
-To detect the rising and falling bit,
- we decided to use pin 7 for this specific part of the project
-\end_layout
-
-\begin_layout Standard
-\begin_inset Box Boxed
-position "t"
-hor_pos "c"
-has_inner_box 1
-inner_pos "t"
-use_parbox 0
-use_makebox 0
-width "100col%"
-special "none"
-height "1in"
-height_special "totalheight"
-thickness "0.4pt"
-separation "3pt"
-shadowsize "4pt"
-framecolor "default"
-backgroundcolor "none"
-status open
-
-\begin_layout Plain Layout
-MAP_GPIOIntTypeSet(GPIOA1_BASE,
- GPIO_PIN_7,
- GPIO_BOTH_EDGES);
-\end_layout
-
-\begin_layout Plain Layout
-MAP_GPIOIntEnable(GPIOA1_BASE,
- GPIO_PIN_7);
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-When the programs first starts,
- it sets up pin and Remote_Handler,
- then runs the main loop.
-\end_layout
-
-\begin_layout Standard
-Every time there is a change in edge,
- it first is sent to the Interrupt Handler
-\end_layout
-
-\begin_layout Standard
-If timer_counter = 0 
+Since setting up the AWS account,
+ configuring the device shadow,
+ and flashing the certificates are step-by-step instructions,
+ there is not many unique methods to report.
+ For Windows,
+ we found installing 
+\family typewriter
+OpenSSL v1.1.1
+\family default
+ with Chocolatey was the easiest approach,
+ since doing so from OpenSSL's website would involve compiling Perl and building the binary ourselves.
+ Save for this step,
+ we follow the guide from the lab website.
+ The AWS code is a much more involved process,
+ and has a lot of moving parts.
 \end_layout
 
 \begin_layout Enumerate
-keep track of time since last edge using SysTick 
-\end_layout
-
-\begin_layout Enumerate
-check current pin for polarity
-\end_layout
-
-\begin_layout Enumerate
-adds to pulse_idx (0-30 bit for duration,
- 31 bit for polarity)
-\end_layout
-
-\begin_layout Enumerate
-reset SysTick
-\end_layout
-
-\begin_layout Standard
-If timer_counter = 1
-\end_layout
-
-\begin_layout Enumerate
-edge = new transmission
-\end_layout
-
-\begin_layout Enumerate
-resets timer_counter and pulse_idx
-\end_layout
-
-\begin_layout Standard
-\begin_inset Box Boxed
-position "t"
-hor_pos "c"
-has_inner_box 1
-inner_pos "t"
-use_parbox 0
-use_makebox 0
-width "100col%"
-special "none"
-height "1in"
-height_special "totalheight"
-thickness "0.4pt"
-separation "3pt"
-shadowsize "4pt"
-framecolor "default"
-backgroundcolor "none"
-status open
-
-\begin_layout Plain Layout
-void Remote_Handler() {
-\end_layout
-
-\begin_layout Plain Layout
-unsigned long status = MAP_GPIOIntStatus(GPIOA1_BASE,
- true);
-\end_layout
-
-\begin_layout Plain Layout
-MAP_GPIOIntClear(GPIOA1_BASE,
- status);
-\end_layout
-
-\begin_layout Plain Layout
-uint32_t time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
-\end_layout
-
-\begin_layout Plain Layout
-HWREG(NVIC_ST_CURRENT) = 0;
-\end_layout
-
-\begin_layout Plain Layout
-if (timer_counter == 0) {
-\end_layout
-
-\begin_layout Plain Layout
-if (pulse_idx < 128) {
-\end_layout
-
-\begin_layout Plain Layout
-int pin_val = MAP_GPIOPinRead(GPIOA1_BASE,
- GPIO_PIN_7);
-\end_layout
-
-\begin_layout Plain Layout
-uint32_t time_us = time_ticks / TICKS_PER_US;
-\end_layout
-
-\begin_layout Plain Layout
-if (pin_val == 0) {
-\end_layout
-
-\begin_layout Plain Layout
-pulse_buffer[pulse_idx] = time_us | 0x80000000u;
-\end_layout
-
-\begin_layout Plain Layout
-} else {
-\end_layout
-
-\begin_layout Plain Layout
-pulse_buffer[pulse_idx] = time_us;
-\end_layout
-
-\begin_layout Plain Layout
-}
-\end_layout
-
-\begin_layout Plain Layout
-pulse_idx++;
-\end_layout
-
-\begin_layout Plain Layout
-}
-\end_layout
-
-\begin_layout Plain Layout
-} else {
-\end_layout
-
-\begin_layout Plain Layout
-timer_counter = 0;
-\end_layout
-
-\begin_layout Plain Layout
-pulse_idx = 0;
-\end_layout
-
-\begin_layout Plain Layout
-}
-\end_layout
-
-\begin_layout Plain Layout
-}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Although we were given timer to use,
- at least for this program we decided on using the internal clock of the MCU itself (SysTick),
- and implementing a watchdog around it.
- The timer is forced to fire at every interval,
- but using the MCU's internal clock allows you to start and restart the count at any time.
- When the program starts up/detects every edge,
- it:
-\end_layout
-
-\begin_layout Enumerate
-Resets SysTick
-\end_layout
-
-\begin_layout Enumerate
-Runs SysTick clock down from 0x00FFFFFF (~209ms) 
-\end_layout
-
-\begin_layout Enumerate
-If there's no future signal,
- it sets the timer_counter to 1,
- (this then sends signal to main loop to decode entire signal) 
-\end_layout
-
-\begin_layout Standard
-\begin_inset Box Boxed
-position "t"
-hor_pos "c"
-has_inner_box 1
-inner_pos "t"
-use_parbox 0
-use_makebox 0
-width "100col%"
-special "none"
-height "1in"
-height_special "totalheight"
-thickness "0.4pt"
-separation "3pt"
-shadowsize "4pt"
-framecolor "default"
-backgroundcolor "none"
-status open
-
-\begin_layout Plain Layout
-void SysTick_Init(void) {
-\end_layout
-
-\begin_layout Plain Layout
-SysTickIntRegister(SysTick_Handler);
-\end_layout
-
-\begin_layout Plain Layout
-HWREG(NVIC_ST_RELOAD) = RELOAD - 1;
-\end_layout
-
-\begin_layout Plain Layout
-HWREG(NVIC_ST_CURRENT) = 0;
-\end_layout
-
-\begin_layout Plain Layout
-HWREG(NVIC_ST_CTRL) |= (NVIC_ST_CTRL_CLK_SRC |
-\end_layout
-
-\begin_layout Plain Layout
-NVIC_ST_CTRL_INTEN |
-\end_layout
-
-\begin_layout Plain Layout
-NVIC_ST_CTRL_ENABLE );
-\end_layout
-
-\begin_layout Plain Layout
-}
-\end_layout
-
-\begin_layout Plain Layout
-void SysTick_Handler() {
-\end_layout
-
-\begin_layout Plain Layout
-timer_counter = 1;
-\end_layout
-
-\begin_layout Plain Layout
-HWREG(NVIC_ST_CURRENT) = 0;
-\end_layout
-
-\begin_layout Plain Layout
-}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-If the code finally detects timer_counter = 1,
- and pulse_idx>0,
- then it calls for decoding the signal,
- to binary,
- and to print out result.
- To deocde,
- we then:
-\end_layout
-
-\begin_layout Enumerate
-Checks for enough edges to make a RC5 data packet
-\end_layout
-
-\begin_layout Enumerate
-Apply noise filtering to only get the valid edge pulses
-\end_layout
-
-\begin_layout Enumerate
-Determine if it's a long pulse (1778us) or a short pulse (889us)
-\end_layout
-
-\begin_layout Enumerate
-Keep a value on half_waiting to find if we are halfway through the bit or not 
-\end_layout
-
-\begin_layout Enumerate
-If it's a short pulse:
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-detect if it's midway through bit
-\end_layout
-
-\begin_layout Enumerate
-if not,
- wait for next part of bit
-\end_layout
-
-\begin_layout Enumerate
-if it is,
- complete the current bit 
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-If it's a Long Pulse:
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-detect if it's midway through a bit
-\end_layout
-
-\begin_layout Enumerate
-if it isn't,
- then set it to first half
-\end_layout
-
-\begin_layout Enumerate
-if it is,
- then it completes the current bit and starts the next one
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-With the information on whether or not it is high/low from the pulse_buffer,
- we then include that with whether or that was at the mid-point using half_waiting,
- and then prints out 1/0 with the resulting output
-\end_layout
-
-\begin_layout Standard
-For this specific task we are required to show the results on the UART terminal,
- so we are required to use the uart_if.c code provided to us to then take whatever value is outputted in the program,
- and then output the specific key over UART.
+First,
+ the timestamp needs to be within the current month (and year) for the requests to the HTTP endpoint to work.
+ We update the 
+\family typewriter
+MONTH
+\family default
+ and 
+\family typewriter
+YEAR
+\family default
+ variables accordingly.
+ These variables are used in 
+\family typewriter
+set_time()
+\family default
+,
+ which
+\family typewriter
  
-\begin_inset Box Boxed
-position "t"
-hor_pos "c"
-has_inner_box 1
-inner_pos "t"
-use_parbox 0
-use_makebox 0
-width "100col%"
-special "none"
-height "1in"
-height_special "totalheight"
-thickness "0.4pt"
-separation "3pt"
-shadowsize "4pt"
-framecolor "default"
-backgroundcolor "none"
+\family default
+invokes 
+\family typewriter
+sl_DevSet()
+\family default
+ provided by the SimpleLink library.
+ This function is responsible for configuration of the CC3200's SimpleLink WiFI chip,
+ a network processor.
+ It will not work properly over the HTTP protocol without establishing an accurate date for the transaction.
+\end_layout
+
+\begin_layout Enumerate
+We further specify what server we are querying.
+ In our case,
+ the server where our device shadow lives corresponds to 
+\family typewriter
+a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com
+\family default
+,
+ which is using the US East 1 server (West Virginia) as requested in the first part of the lab.
+ Tjhe destination port we are communicating over is port 
+\family typewriter
+8443
+\family default
+,
+ not port 
+\family typewriter
+80
+\family default
+ (as we'd expected with an HTTP request).
+ The device shadow is at 
+\family typewriter
+/things/ChenFeenstra-CC3200-MCU/shadow
+\family default
+ on the server,
+ which will be is used in the headers for the HTTP requests by AWS.
+\end_layout
+
+\begin_layout Enumerate
+The CC3200 is connected to the local access point using 
+\family typewriter
+connectToAccessPoint()
+\family default
+,
+ provided by the SimpleLink library.
+ This local access point is a hotspot from one of our phones,
+ set to 
+\family typewriter
+WPA
+\family default
+ since it is password protected.
+ This is a requirement for a stable connection to the server over HTTP.
+ A positive return value (
+\family typewriter
+lRetVal
+\family default
+) from the function indicates a successful connection was established.
+\end_layout
+
+\begin_layout Enumerate
+We connect to the website with TLS encryption,
+ using 
+\family typewriter
+tls_connect()
+\family default
+.
+ This ensures that we can forgo the HTTPS encryption requirements,
+ and use just plain HTTP to connect,
+ which is better-suited (and simpler) for this lab.
+ Once this connection has been established,
+ we are now ready for our 
+\family typewriter
+HTTP POST
+\family default
+ and 
+\family typewriter
+HTTP GET
+\family default
+ endpoints!
+ We break them down next.
+ We'll finish off with the logic needed to send them to the server.
+\end_layout
+
+\begin_layout Subsubsection
+HTTP Post Anatomy
+\end_layout
+
+\begin_layout Standard
+Using primitive C string manipulation functions (
+\family typewriter
+strcpy()
+\family default
+,
+ 
+\family typewriter
+strlen()
+\family default
+) and some temporary buffers to store data,
+ we can carefully construct the payload line by line.
+ This also includes newline and carriage return control characters,
+ which are represented in their human-readable format.
+ When all is finished,
+ the payload looks like the following:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
 status open
 
 \begin_layout Plain Layout
-switch (cmd) {
+POST /things/ChenFeenstra-CC3200-MCU/shadow HTTP/1.1
 \end_layout
 
 \begin_layout Plain Layout
-case 252:
- Message("Button:
- 0
-\backslash
-n
-\backslash
-r");
- break;
+Host:
+ a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.
 \end_layout
 
 \begin_layout Plain Layout
-case 253:
- Message("Button:
- 1
-\backslash
-n
-\backslash
-r");
- break;
+Connection:
+ Keep-Alive
 \end_layout
 
 \begin_layout Plain Layout
-case 248:
- Message("Button:
- 2
-\backslash
-n
-\backslash
-r");
- break;
+
 \end_layout
 
 \begin_layout Plain Layout
-case 249:
- Message("Button:
- 3
-\backslash
-n
-\backslash
-r");
- break;
+Content-Type:
+ application/json;
+ charset=utf-8
 \end_layout
 
 \begin_layout Plain Layout
-case 244:
- Message("Button:
- 4
-\backslash
-n
-\backslash
-r");
- break;
+Content-Length:
+ strlen(DATA1)
 \end_layout
 
 \begin_layout Plain Layout
-case 245:
- Message("Button:
- 5
-\backslash
-n
-\backslash
-r");
- break;
+
 \end_layout
 
 \begin_layout Plain Layout
-case 240:
- Message("Button:
- 6
-\backslash
-n
-\backslash
-r");
- break;
+{
 \end_layout
 
 \begin_layout Plain Layout
-case 241:
- Message("Button:
- 7
-\backslash
-n
-\backslash
-r");
- break;
+	
+\begin_inset Quotes eld
+\end_inset
+
+state
+\begin_inset Quotes erd
+\end_inset
+
+ :
+ {
 \end_layout
 
 \begin_layout Plain Layout
-case 236:
- Message("Button:
- 8
-\backslash
-n
-\backslash
-r");
- break;
+		
+\begin_inset Quotes eld
+\end_inset
+
+desired
+\begin_inset Quotes erd
+\end_inset
+
+:
+ {
 \end_layout
 
 \begin_layout Plain Layout
-case 237:
- Message("Button:
- 9
-\backslash
-n
-\backslash
-r");
- break;
+			
+\begin_inset Quotes eld
+\end_inset
+
+var
+\begin_inset Quotes erd
+\end_inset
+
+ :
+ 
+\begin_inset Quotes eld
+\end_inset
+
+Hello:
+ phone,
+ message from CC3200 via AWS IoT!
+\begin_inset Quotes erd
+\end_inset
+
+
 \end_layout
 
 \begin_layout Plain Layout
-case 229:
- Message("Button:
- MUTE
-\backslash
-n
-\backslash
-r");
- break;
+		}
 \end_layout
 
 \begin_layout Plain Layout
-case 184:
- Message("Button:
- LAST
-\backslash
-n
-\backslash
-r");
- break;
-\end_layout
-
-\begin_layout Plain Layout
-default:
-\end_layout
-
-\begin_layout Plain Layout
-break;
+	}
 \end_layout
 
 \begin_layout Plain Layout
 }
 \end_layout
 
-\begin_layout Plain Layout
-}
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Subsection
-Board to Board Texting via UART
-\end_layout
-
-\begin_layout Standard
-Since there is board to board communication on top of interacting with the OLED screen in this checkoff,
- there needs to be set pins required for transmitting and receiving the data,
- which we decided in implement pin 1 and 2 for,
- since they were no longer needed for I2C.
- We had a pretty good OLED display working using SPI,
- so we also used the setup from that lab as well.
- Using the previous part,
- we also can press buttons onto the MCU,
- and then we can decode what it says now.
- We just had to implement out how they would communicate to each other through UART,
- and what specific graphics we wanted to show on the display.
- Based on those 2 things,
- along with switching the output pin of the IR receiver to 6,
- we then created the pinmux config.
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float table
-placement H
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-\begin_inset CommandInset label
-LatexCommand label
-name "tab:Checkoff-3-PinMux"
-
-\end_inset
-
-Checkoff 3 PinMux Config
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Tabular
-<lyxtabular version="3" rows="12" columns="3">
-<features tabularvalignment="middle">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\bar under
-OLED Signal
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-MCU Interface
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Physical Pin
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-MOSI (SI)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-SPI_DOUT (MOSI)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-7
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-SCK (CL)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-SPI_CLK (SCLK)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-5
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-DC
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-GPIO
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-64
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Reset (R)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-GPIO
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-3
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-OLEDCS (CS)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-GPIO
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-4
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\bar under
-UART Signal
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-MCU Interface
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Physical Pin
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-N/A
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-TX/RX
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-1
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-N/A
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-RX/TX
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" color="default" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-2
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-IR
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Vout
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-6
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Vin (+)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-3.3 V
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-VCC
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-GND (G)
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-GND
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-GND
-\end_layout
-
-\end_inset
-</cell>
-</row>
-</lyxtabular>
-
-\end_inset
-
-
-\end_layout
-
 \end_inset
 
 
 \end_layout
 
 \begin_layout Standard
-For the SPI OLED interface,
- the design we came up with is that the top half would be the receiving,
- and we decided to color it in cyan.
- We did a very similar design for the bottom,
- but we made that yellow.
- When a character is being chosen we decided to make it flash yellow to show that it's still being typed.
- If the message box exceeds the pixel amount within the row,
- we then force it to scroll down.
+With this format,
+ HTTP knows it is receiving a POST request for our shadow device,
+ and it is being hosted on the specified AWS server (likely in a specific container).
+ It also knows to keep the connection alive,
+ to ensure it does not prematurely time out while data is still being sent over.
+ It knows that the relevant data is JSON using the UTF-8 character set,
+ and it also knows the length of this JSON data (so that it knows when to stop reading).
+ With all of this information,
+ this is ready to be serialized as a packet and sent to the AWS server.
+ The JSON format will be posted to the device shadow,
+ and if all is well,
+ should be viewable under it's Thing entry!
+\end_layout
+
+\begin_layout Standard
+Sending this data over the network is as simple as invoking the 
+\family typewriter
+sl_Send()
+\family default
+ function from the SimpleLink library,
+ with 3 parameters:
  
 \end_layout
 
-\begin_layout Standard
-After the part of the program that deals with the interrupts,
- we then go to actually typing out the characters one by one.
- We use the system already given to us on the remote,
- where we press the same button to cycle through 3 characters.
- In this program we get to implement the timer because we are simply just starting it at a time and uses the character chosen if it's stuck there for 2 seconds.
- 
+\begin_layout Enumerate
+
+\family typewriter
+sd
+\family default
+,
+ the socket descriptor which specifies the active socket (obtained from the 
+\family typewriter
+sl_Socket()
+\family default
+ call,
+ done under the hood in our 
+\family typewriter
+utils/network.c
+\family default
+).
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+pBuf
+\family default
+,
+ the pointer to buffer (this is the pointer to the buffer we have prepared with the data to be sent).
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Len
+\family default
+,
+ the length of the data in bytes to be sent.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Flags
+\family default
+,
+ specifies optional flags.
+ We set it to 
+\family typewriter
+0
+\family default
+ to ensure we are just doing a default send
 \end_layout
 
 \begin_layout Standard
-We then used UART,
- where after typing it out and clicking send,
- we simply send the data character by character until it is all send.
- On the receiving side,
- we used 2 interrupts,
- where one triggers whenever there's enough characters received.
- The second interrupt happens when no new characters arrive after a certain time.
- After a 
-\backslash
-n,
- they then get sent to the display to get outputted.
- 
+And that is it!
+ At this point,
+ the packet has been sent,
+ and with luck the JSON will appear on the Thing entry of the device shadow.
 \end_layout
 
-\begin_layout Subsubsection*
-Checkoff Task 3
+\begin_layout Subsubsection
+HTTP Get Anatomy
 \end_layout
 
-\begin_layout Standard
-Here in the wave form diagram after checking off with the TA on the implementation working,
- we then verified it digitally using the Saleae in the screenshot below that there was communication between boards every time we clicked send.
+\begin_layout Subsection
+Using SNS to Send a Message to Email
 \end_layout
 
-\begin_layout Standard
-\begin_inset Float figure
-placement document
-alignment document
-wide false
-sideways false
-status collapsed
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-UART Transmission
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
+\begin_layout Subsection
+Integrate IR Remote Texting
 \end_layout
 
 \begin_layout Section
