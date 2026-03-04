@@ -1,4 +1,4 @@
-// Lab 3 Checkoff 3 -- Board to Board Texting via UART
+// Final Project -- FM Radio Exlporer
 // Jacob Feenstra & Chun Ho Chen
 
 //*****************************************************************************
@@ -74,6 +74,9 @@
 #include "adafruit_oled_lib/Adafruit_GFX.h"
 #include "adafruit_oled_lib/glcdfont.h"
 #include "adafruit_oled_lib/oled_test.h"
+
+// RDA5807M Radio Module
+#include "RDA5807M/rda5807m.h"
 
 //From UART_Demo
 #define CONSOLE              UARTA0_BASE
@@ -698,6 +701,11 @@ int main(void) {
 
    // SysTick: microsecond pulse timer for IR decoding
    SysTick_Init();
+
+   // RDA5807 RADIO MODULE LIBRARY CALLED HERE
+   RDA5807M_Init();
+   int rc = RDA5807M_TuneFrequency(90.3f);
+   UART_PRINT("RDA5807M result: %d\n\r", rc);
 
    // GPIOA1 pin 7: IR receiver input (both edges)
    MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
