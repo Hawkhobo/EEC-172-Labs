@@ -244,22 +244,27 @@ Introduction
 \end_layout
 
 \begin_layout Standard
-Previously doing everything only on the hardware now that we are going to incorporate internet capability alongside being able to use the hardware standards that we have already 
+Previously doing everything only on the hardware,
+ now we are going to incorporate internet capability to allow hardware interactions coming from the launchpad to 
 \end_layout
 
 \begin_layout Enumerate
-W
+We first go through AWS and flash the required certifications to the SPI
 \end_layout
 
 \begin_layout Enumerate
-Combining our ability to communicate with the OLED and decoding TV codes,
- we can combine them into a text message from one Launchpad to another.
+We then connect it to WIFI (or Personal Hotspot),
+ and then connect our TI Launchpad to its shadow 
 \end_layout
 
-\begin_layout Standard
-In completing this lab,
- we effectively know how to combine both SPI and UART at the same time,
- and get to learn how to both decode and encode basic tv signals running the RC5 protocol 
+\begin_layout Enumerate
+We then adjust the messages coming out of the Launchpad to send formatted messages to email.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Combining this with our TV Remote + OLED combination circuit from Lab 3,
+ we then can email using text.
 \end_layout
 
 \begin_layout Section
@@ -293,9 +298,9 @@ Texas Instruments CCS project that demonstrates how to use SPI signals for simpl
 
 \family typewriter
 Adafruit SSD1351 Open Source Graphics Library:
- 
+
 \family default
-Abridged from the Adafruit graphics library,
+ Abridged from the Adafruit graphics library,
  provides an API to write commands (and their subsequent data) to the OLED,
  as well as turn it on.
  Includes various functions to draw complex shapes on the digital display.
@@ -321,6 +326,17 @@ uart_if.c:
 
 \family default
  Used for UART communication to the laptop serial terminal
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+aws-rest-api-ssl-demo:
+
+\family default
+ This is the beginning demo originally designed to connect to google services,
+ but now used to connect just to AWS endpoints using our certificates.
+ This also encloses the specific json files that we can send out when we connect it to the email using SNS
 \end_layout
 
 \begin_layout Subsection
@@ -395,11 +411,11 @@ Needed for implementation of the IR receiver circuit.
 \begin_layout Enumerate
 
 \family typewriter
-Saleae Logic Analyzer:
- 
+Personal Hotspot (Mobile):
+
 \family default
-Logic Analyzer to read MCU pin signals across 4 channels.
- Allows for graphical display of a signal when coupled with software.
+ Since we could not use the campus WIFI networks for internet compatibility,
+ the next best thing would be connecting through our personal hotspot that doesn't need any more security layers than just the password
 \end_layout
 
 \begin_layout Subsection
@@ -429,20 +445,33 @@ Software to multiplex pins for configuration of pinouts.
 \begin_layout Enumerate
 
 \family typewriter
-Saleae Logic 2:
- 
+Amazon Web Services:
+
 \family default
-GUI software to display signals from the Saleae Logic Analyzer across 4 channels,
- and interpret data based off analyzer profiles.
+ Since we are trying to connect to the internet,
+ we used Amazon Web Services
 \end_layout
 
+\begin_deeper
+\begin_layout Enumerate
+IoT Core:
+ This is where we generate out certificates to flash to the board,
+ and to create/monitor our board shadow
+\end_layout
+
+\begin_layout Enumerate
+Simple Notification Service:
+ This is the process we use our board to communicate to the email services
+\end_layout
+
+\end_deeper
 \begin_layout Section
 Goals
 \end_layout
 
 \begin_layout Standard
 In this lab section,
- we have 4 checkoff tasks which build off of eachother.
+ we have 4 checkoff tasks which build off of each other.
  
 \end_layout
 
@@ -1190,6 +1219,9 @@ OpenSSL
 version 1.1.1,
  or it simply would not work.
  The command-line syntax also had to be exact.
+ On the mac side,
+ there were unknown pitfalls with flashing certifications within specific user files that I had to figure out as well.
+ 
 \end_layout
 
 \begin_layout Enumerate
@@ -1213,9 +1245,15 @@ http_get()
 
 \begin_layout Enumerate
 Checkoff 2 took some work to get nice formatting for the SNS message.
- 
-\color red
-[FILL OUT DETAILS HERE]
+ After some fiddling,
+ we figured out 2 ways to reach the same output message.
+ The first way was through just simply raw formatting,
+ and it would need to select the value and then print output.
+ But for json,
+ we had to include default,
+ and email to correctly follow the format.
+ While they both go output the same message,
+ we understand that using json formatting would be more effective long term when we have to implement other features.
 \end_layout
 
 \begin_layout Enumerate
@@ -1290,27 +1328,19 @@ My contributions are as follows:
 \end_layout
 
 \begin_layout Enumerate
-Assembled/troubleshooted issues that stemmed from IR circuit
+Assembled,
+ flashed,
+ fixed the issues with Checkoff #1,
+ #2
 \end_layout
 
 \begin_layout Enumerate
-Captured images of all the waveforms
+Wrote practice code with UART terminal instead of TV Remote circuit.
 \end_layout
 
 \begin_layout Enumerate
-Verified the code outputting correctly by manually decoding the codes given from the remote
-\end_layout
-
-\begin_layout Enumerate
-Verified the output on Checkoff #2 
-\end_layout
-
-\begin_layout Enumerate
-Assembled the final circuit and troubleshooted issues related to RX/TX
-\end_layout
-
-\begin_layout Enumerate
-Wrote the first draft for the report and prepared it for IEEE format.
+Wrote Sections 1-2,
+ and some of Section 6
 \end_layout
 
 \end_body
