@@ -1,0 +1,828 @@
+// Final Project -- FM Radio Exlporer
+// Jacob Feenstra & Chun Ho Chen
+
+//*****************************************************************************
+//
+// Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
+// 
+// 
+//  Redistribution and use in source and binary forms, with or without 
+//  modification, are permitted provided that the following conditions 
+//  are met:
+//
+//    Redistributions of source code must retain the above copyright 
+//    notice, this list of conditions and the following disclaimer.
+//
+//    Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the 
+//    documentation and/or other materials provided with the   
+//    distribution.
+//
+//    Neither the name of Texas Instruments Incorporated nor the names of
+//    its contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
+//
+//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+//  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+//  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+//  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+//  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+//  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+//  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+//  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+//  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+//  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+//*****************************************************************************
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+// SimpleLink include
+#include "simplelink.h"
+
+// Driverlib includes
+#include "gpio.h"
+#include "hw_types.h"
+#include "hw_ints.h"
+#include "hw_apps_rcm.h"
+#include "hw_common_reg.h"
+#include "hw_memmap.h"
+#include "interrupt.h"
+#include "prcm.h"
+#include "rom.h"
+#include "rom_map.h"
+#include "spi.h"
+#include "systick.h"
+#include "timer.h"
+#include "uart.h"
+#include "utils.h"
+
+// Common interface includes
+#include "common.h"
+#include "Debug/syscfg/pin_mux_config.h"
+#include "timer_if.h"
+#include "uart_if.h"
+
+// Custom includes
+#include "utils/network_utils.h"
+
+// OLED Adafruit functions for output via SPI
+#include "adafruit_oled_lib/Adafruit_SSD1351.h"
+#include "adafruit_oled_lib/Adafruit_GFX.h"
+#include "adafruit_oled_lib/glcdfont.h"
+#include "adafruit_oled_lib/oled_test.h"
+
+// RDA5807M Radio Module
+#include "RDA5807M/rda5807m.h"
+
+//From UART_Demo
+#define CONSOLE              UARTA0_BASE
+#define UartGetChar()        MAP_UARTCharGet(CONSOLE)
+#define UartPutChar(c)       MAP_UARTCharPut(CONSOLE, c)
+#define MAX_STRING_LENGTH    80
+
+
+//NEED TO UPDATE THIS FOR IT TO WORK!
+#define DATE                26    /* Current Date */
+#define MONTH               2     /* Month 1-12 */
+#define YEAR                2026  /* Current year */
+#define HOUR                21    /* Time - hours */
+#define MINUTE               20  /* Time - minutes */
+#define SECOND              0     /* Time - seconds */
+
+#define APPLICATION_NAME      "SSL"
+#define APPLICATION_VERSION   "WQ26"
+#define SERVER_NAME           "a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com"
+#define GOOGLE_DST_PORT       8443
+
+
+#define POSTHEADER "POST /things/ChenFeenstra-CC3200-MCU/shadow HTTP/1.1\r\n"
+#define GETHEADER "GET /things/ChenFeenstra-CC3200-MCU/shadow HTTP/1.1\r\n"
+#define HOSTHEADER "Host: a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com\r\n"
+#define CHEADER "Connection: Keep-Alive\r\n"
+#define CTHEADER "Content-Type: application/json; charset=utf-8\r\n"
+#define CLHEADER1 "Content-Length: "
+#define CLHEADER2 "\r\n\r\n"
+
+char DATA1[512];
+long lRetVal;
+
+
+//*****************************************************************************
+//                      Global Variables for Vector Table
+//*****************************************************************************
+#if defined(ccs)
+extern void (* const g_pfnVectors[])(void);
+#endif
+#if defined(ewarm)
+extern uVectorEntry __vector_table;
+#endif
+
+//****************************************************************************
+//                      LOCAL FUNCTION PROTOTYPES
+//****************************************************************************
+static int http_post(int);
+static int set_time();
+static void BoardInit(void);
+
+//*****************************************************************************
+//
+//! Board Initialization & Configuration
+//!
+//! \param  None
+//!
+//! \return None
+//
+//*****************************************************************************
+static void
+BoardInit(void)
+{
+/* In case of TI-RTOS vector table is initialize by OS itself */
+#ifndef USE_TIRTOS
+  //
+  // Set vector table base
+  //
+#if defined(ccs)
+    MAP_IntVTableBaseSet((unsigned long)&g_pfnVectors[0]);
+#endif
+#if defined(ewarm)
+    MAP_IntVTableBaseSet((unsigned long)&__vector_table);
+#endif
+#endif
+    //
+    // Enable Processor
+    //
+    MAP_IntMasterEnable();
+    MAP_IntEnable(FAULT_SYSTICK);
+    PRCMCC3200MCUInit();
+}
+
+//*****************************************************************************
+// Globals for SPI communication
+//*****************************************************************************
+#define SPI_IF_BIT_RATE  1000000
+#define TR_BUFF_SIZE     100
+
+//*****************************************************************************
+//
+//!
+//!
+//! Configure SPI for communication
+//!
+//! \return None.
+//
+//*****************************************************************************
+void SPIconfig()
+{
+
+    //
+    // Reset SPI
+    //
+    MAP_SPIReset(GSPI_BASE);
+
+    //
+    // Configure SPI interface
+    //
+    // Using Mode 3; only interested in MOSI, CS, and SCLK for SPI
+    MAP_SPIConfigSetExpClk(GSPI_BASE,MAP_PRCMPeripheralClockGet(PRCM_GSPI),
+                     SPI_IF_BIT_RATE,SPI_MODE_MASTER,SPI_SUB_MODE_3,
+                     (SPI_SW_CTRL_CS |
+                     SPI_4PIN_MODE |
+                     SPI_TURBO_OFF |
+                     SPI_CS_ACTIVEHIGH |
+                     SPI_WL_8));
+
+    //
+    // Enable SPI for communication
+    //
+    MAP_SPIEnable(GSPI_BASE);
+
+    // enable internal SPI CS to satisfy SPI API;note we are using GPIOP CS instead to work with writeCommand() and writeData()
+    MAP_SPICSEnable(GSPI_BASE);
+
+}
+
+
+//***************************************************
+//
+// Globals used by SysTick and TV Remote Handler
+//
+//***************************************************
+#define RELOAD 0x00FFFFFF
+#define TICKS_PER_US 80   // 80MHz clock / 1,000,000
+void SysTick_Handler(void);
+
+
+// internal registers used by SysTick
+#define NVIC_ST_CTRL    0xE000E010
+#define NVIC_ST_RELOAD  0xE000E014
+#define NVIC_ST_CURRENT 0xE000E018
+
+// SysTick control register bitmasks
+#define NVIC_ST_CTRL_CLK_SRC  0x00000004
+#define NVIC_ST_CTRL_INTEN    0x00000002
+#define NVIC_ST_CTRL_ENABLE   0x00000001
+
+// RC-5 protocol constants
+#define T_UNIT       889
+#define T_SHORT_MAX  1334
+#define T_NOISE_MIN  300
+#define T_LONG_MAX   2500
+
+// raw edge timings
+volatile uint32_t pulse_buffer[128]; // Buffer to store timings
+volatile uint32_t pulse_idx = 0;
+
+// cross-ISR flag
+volatile int timer_counter = 0;
+
+// SysTick Configuration: high-speed down-counter with microsecond pulse precision
+void SysTick_Init(void) {
+    SysTickIntRegister(SysTick_Handler);
+
+    HWREG(NVIC_ST_RELOAD) = RELOAD - 1;
+    HWREG(NVIC_ST_CURRENT) = 0; // reset timer
+    // enable clock source (processor), interrupt, and the counter
+    HWREG(NVIC_ST_CTRL) |= (NVIC_ST_CTRL_CLK_SRC |
+                            NVIC_ST_CTRL_INTEN   |
+                            NVIC_ST_CTRL_ENABLE  );
+}
+
+
+void SysTick_Handler() {
+    // set timer_counter to 1 if we haven't seen an IR edge in 209ms (message concluded)
+    timer_counter = 1;
+
+    // Clear count and interrupt flag; give control back to software
+    HWREG(NVIC_ST_CURRENT) = 0;
+}
+
+
+// primary logic for interrupt handling and parsing Remote signals
+void Remote_Handler() {
+    // clear interrupt flag for pin 06
+    unsigned long status = MAP_GPIOIntStatus(GPIOA1_BASE, true);
+    MAP_GPIOIntClear(GPIOA1_BASE, status);
+
+    // Measure elapsed time since last edge
+    // MAX 24-bit representation - last value seen by SysTick
+    uint32_t time_ticks = RELOAD - HWREG(NVIC_ST_CURRENT);
+
+    // reset SysTick value (for next pulse)
+    HWREG(NVIC_ST_CURRENT) = 0;
+
+    // Logic for RC-5/RC-6 protocol
+    // Look for short 889us and long 1778us pulses
+    // Filter noise, but capture everything else
+    if (timer_counter == 0) {
+            // Allow for plenty of edge checks (RC-5 should only have 28), prevent buffer overflow
+            if (pulse_idx < 128) {
+                int pin_val = MAP_GPIOPinRead(GPIOA1_BASE, GPIO_PIN_7);
+                uint32_t time_us = time_ticks / TICKS_PER_US;
+
+                // Store polarity in MSB: 1 = Pulse was HIGH, 0 = Pulse was LOW
+                // Note: If pin is LOW now, the pulse that just ended was HIGH.
+                if (pin_val == 0) {
+                    // Pulse duration (in microseconds, bit 0-30) and HIGH/LOW polarity (but 31)
+                    pulse_buffer[pulse_idx] = time_us | 0x80000000u;
+                } else {
+                    pulse_buffer[pulse_idx] = time_us;
+                }
+                pulse_idx++;
+            }
+        // If watchdog fired, new transmission has arrived
+        } else {
+            timer_counter = 0;
+            pulse_idx = 0;
+        }
+}
+
+static int decode_RC5(void) {
+    if (pulse_idx < 10) return -1;  // Too few edges to be a valid RC-5 frame
+
+    uint32_t code = 0;
+    int bits     = 0;
+    int half_waiting = 0;
+
+    int i;
+    for (i = 0; i < (int)pulse_idx && bits < 14; i++) {
+        uint32_t t    = pulse_buffer[i] & 0x7FFFFFFFu;
+        int      high = (pulse_buffer[i] & 0x80000000u) ? 1 : 0;
+        // high == 1    the pulse that ended was HIGH (no carrier)
+        // high == 0  the pulse that ended was LOW  (carrier active)
+
+        // Discard noise and inter-frame gaps
+        if (t < T_NOISE_MIN || t > T_LONG_MAX) continue;
+
+        int is_short = (t < T_SHORT_MAX);
+
+        if (is_short) {
+            // A short pulse is one half-bit interval.
+            if (!half_waiting) {
+                // This is the FIRST half of a new bit; save and wait.
+                half_waiting = 1;
+            } else {
+                // This is the SECOND half; the bit value equals the level
+                // of this second half.
+                //   RC-5 "1" second half HIGH high == 1, bit = 1
+                //   RC-5 "0" second half LOW high == 0, bit = 0
+                code = (code << 1) | (unsigned int)high;
+                bits++;
+                half_waiting = 0;
+            }
+        } else {
+            // A long pulse spans TWO half-bit intervals at the same level.
+            // This always completes the currently pending half-bit AND starts
+            // the next bit's first half (which is the same level).
+            if (!half_waiting) {
+                // Long pulse at a full-bit boundary (unusual but can happen
+                // at the very start of the frame). Treat as first-half only.
+                half_waiting = 1;
+            } else {
+                // Complete the pending bit: second half = this pulse's level.
+                code = (code << 1) | (unsigned int)high;
+                bits++;
+                // The end of this long pulse is also the first half of the
+                // NEXT bit (same level), so remain in half_waiting = 1.
+                half_waiting = 1;
+            }
+        }
+    }
+
+    if (bits < 14) return -1;   // incomplete frame
+    return (int)(code & 0x3FFFu);
+}
+
+// Extract current cmd from finished pulse
+int fetch_cmd(int rc5_code) {
+    if (rc5_code < 0) {
+        return -1;
+    }
+    return rc5_code & 0xFF;
+}
+
+
+/***********************************************************************************
+ * Data structures and rules to facilitate multi-tap texting
+ */
+//**********************************************************************************
+// set delay for determining if cycling through characters or printing a character
+unsigned char alpha_buttons[254][4] = {
+ [252] = {' ', ' ', ' ', '#'},
+ [253] = {'.', ',', '!', '#'},
+ [248] = {'A', 'B', 'C', '#'},
+ [249] = {'D', 'E', 'F', '#'},
+ [244] = {'G', 'H', 'I', '#'},
+ [245] = {'J', 'K', 'L', '#'},
+ [240] = {'M', 'N', 'O', '#'},
+ [241] = {'P', 'Q', 'R', 'S'},
+ [236] = {'T', 'U', 'V', '#'},
+ [237] = {'W', 'X', 'Y', 'Z'}
+};
+
+//*****************************************************************************
+// Multi-tap state and compose / receive buffers
+//*****************************************************************************
+#define MAX_MSG_LEN  64    // maximum message length (bytes, inc. null)
+
+// Timer A1 callback sets this flag to commit the pending character
+volatile bool multitap_timeout = false;
+
+// Active tap state
+static int current_tap_cmd = -1;   // cmd code of button being tapped; -1 = none
+static int tap_count       =  0;   // number of taps on current_tap_cmd
+
+// Bottom-half compose buffer
+static char compose_buf[MAX_MSG_LEN];
+static int  compose_len = 0;
+
+// Top-half received-message buffer (written from UART1 ISR)
+static char recv_buf[MAX_MSG_LEN];
+static int  recv_len = 0;
+volatile bool new_message = false;
+
+// Returns the number of valid (non-sentinel) characters for this button.
+// Returns 0 if the command code has no text mapping.
+static int get_taps_size(int cmd)
+{
+    if (cmd < 0 || cmd >= 254)         return 0;
+    if (alpha_buttons[cmd][0] == 0)    return 0;   // uninitialised entry
+    if (cmd == 241 || cmd == 237)      return 4;   // PQRS, WXYZ
+    return 3;
+}
+
+
+// fires after 2 seconds have elapsed
+void TimerCallback(void) {
+    Timer_IF_InterruptClear(TIMERA1_BASE); // Clear the interrupt
+    multitap_timeout = true;               // Set boolean
+}
+
+//*****************************************************************************
+// UART1 � board-to-board (interrupt-driven RX)
+//
+// Pins must be configured in SysConfig (PinMuxConfig):
+//   PIN_07 -> UART1_TX    PIN_08 -> UART1_RX
+// Wire: Board-A TX -> Board-B RX, Board-B TX -> Board-A RX, GND <-> GND.
+//*****************************************************************************
+#define UART1_BAUD_RATE  115200
+
+// ISR staging buffer builds one line, then copies atomically to recv_buf
+static char uart1_stage[MAX_MSG_LEN];
+static int  uart1_stage_len = 0;
+
+void UART1_Handler(void)
+{
+    // Clear all pending UART1 interrupt flags
+    unsigned long status = MAP_UARTIntStatus(UARTA1_BASE, true);
+    MAP_UARTIntClear(UARTA1_BASE, status);
+
+    // empty RX FIFO
+    while (MAP_UARTCharsAvail(UARTA1_BASE)) {
+        char c = (char)MAP_UARTCharGetNonBlocking(UARTA1_BASE);
+
+        if (c == '\n' || c == '\r') {
+            // End of message: publish to main loop
+            if (uart1_stage_len > 0) {
+                uart1_stage[uart1_stage_len] = '\0';
+                memcpy(recv_buf, uart1_stage, (unsigned)uart1_stage_len + 1);
+                recv_len           = uart1_stage_len;
+                uart1_stage_len    = 0;
+                new_message        = true;
+            }
+        } else if (uart1_stage_len < MAX_MSG_LEN - 1) {
+            uart1_stage[uart1_stage_len++] = c;
+        }
+    }
+}
+
+static void UART1_Init(void)
+{
+    // 1. Clock the UART1 peripheral
+    MAP_PRCMPeripheralClkEnable(PRCM_UARTA1, PRCM_RUN_MODE_CLK);
+    while (!MAP_PRCMPeripheralStatusGet(PRCM_UARTA1));
+
+    // 2. Configure baud rate and frame format (8-N-1)
+    MAP_UARTConfigSetExpClk(UARTA1_BASE,
+                            MAP_PRCMPeripheralClockGet(PRCM_UARTA1),
+                            UART1_BAUD_RATE,
+                            (UART_CONFIG_WLEN_8  |
+                             UART_CONFIG_STOP_ONE |
+                             UART_CONFIG_PAR_NONE));
+
+    // 3. Register ISR and enable RX + receive-timeout interrupts.
+    //    UART_INT_RT fires when the RX FIFO is non-empty and no new
+    //    character has arrived for 32 bit-periods; catches short messages
+    //    that don't fill the FIFO trigger level.
+    MAP_UARTIntRegister(UARTA1_BASE, UART1_Handler);
+    MAP_UARTIntEnable(UARTA1_BASE, UART_INT_RX | UART_INT_RT);
+
+    // 4. Enable the UART1 interrupt line in the ARM NVIC
+    MAP_IntEnable(INT_UARTA1);
+
+    // 5. Enable UART1
+    MAP_UARTEnable(UARTA1_BASE);
+}
+
+// Send a null-terminated string followed by '\n' over UART1 (blocking TX)
+void UART1_Send(const char *msg)
+{
+    while (*msg) {
+        MAP_UARTCharPut(UARTA1_BASE, (unsigned char)*msg++);
+    }
+    MAP_UARTCharPut(UARTA1_BASE, '\n');
+}
+
+//*****************************************************************************
+// OLED display rendering
+//*****************************************************************************
+#define OLED_WIDTH      128
+#define OLED_HALF        64     // y where bottom half starts
+
+#define CHAR_W            6     // character cell width  (5 chars + 1 gap)
+#define CHAR_H            8     // character cell height
+#define MAX_CHARS_ROW    21     // 128-px row character width
+
+// Row y-coordinates
+#define RECV_LABEL_Y      2
+#define RECV_MSG_Y       12
+#define SEND_LABEL_Y     (OLED_HALF + 2)    // 66
+#define SEND_MSG_Y       (OLED_HALF + 12)   // 76
+
+// wrapper: draw a C string at (x,y) with explicit colors
+static void draw_text(int x, int y, const char *str,
+                      unsigned int color, unsigned int bg,
+                      unsigned char size)
+{
+    while (*str) {
+        drawChar(x, y, (unsigned char)*str++, color, bg, size);
+        x += CHAR_W * (int)size;
+    }
+}
+
+// Redraw the entire OLED given TX/RX conditions
+void render_display(void)
+{
+    int i;
+
+    // Top half: received message
+    fillRect(0, 0, OLED_WIDTH, (unsigned int)(OLED_HALF - 1), BLACK);
+    draw_text(0, RECV_LABEL_Y, "RECV:", CYAN, BLACK, 1);
+
+    if (recv_len > 0) {
+        // Scroll so the most recent MAX_CHARS_ROW characters are visible
+        int start = (recv_len > MAX_CHARS_ROW) ? recv_len - MAX_CHARS_ROW : 0;
+        for (i = start; i < recv_len; i++) {
+            drawChar((i - start) * CHAR_W, RECV_MSG_Y,
+                     (unsigned char)recv_buf[i], WHITE, BLACK, 1);
+        }
+    }
+
+    // Divider
+    drawFastHLine(0, OLED_HALF - 1, OLED_WIDTH, WHITE);
+
+    // Bottom half: send area
+    fillRect(0, (unsigned int)OLED_HALF, OLED_WIDTH, (unsigned int)OLED_HALF, BLACK);
+    draw_text(0, SEND_LABEL_Y, "SEND:", YELLOW, BLACK, 1);
+
+    // scrolling for typed character, if the string exceeds 21 characters (stays on one line)
+    int disp_start = (compose_len > MAX_CHARS_ROW) ? compose_len - MAX_CHARS_ROW : 0;
+    for (i = disp_start; i < compose_len; i++) {
+        drawChar((i - disp_start) * CHAR_W, SEND_MSG_Y,
+                 (unsigned char)compose_buf[i], WHITE, BLACK, 1);
+    }
+
+    // Render the currently-cycling (uncommitted) character in YELLOW
+    if (current_tap_cmd >= 0) {
+        int sz = get_taps_size(current_tap_cmd);
+        if (sz > 0) {
+            char c        = (char)alpha_buttons[current_tap_cmd][tap_count % sz];
+            int  disp_pos = compose_len - disp_start;
+            if (disp_pos >= 0 && disp_pos < MAX_CHARS_ROW) {
+                drawChar(disp_pos * CHAR_W, SEND_MSG_Y,
+                         (unsigned char)c, YELLOW, BLACK, 1);
+            }
+        }
+    }
+}
+
+//*****************************************************************************
+// Multi-tap logic
+//*****************************************************************************
+
+// Commit whatever character is currently being cycled into compose_buf,
+// stop the timer, and reset tap state.
+void commit_current_char(void)
+{
+    if (current_tap_cmd >= 0 && compose_len < MAX_MSG_LEN - 1) {
+        int  sz = get_taps_size(current_tap_cmd);
+        if (sz > 0) {
+            char c = (char)alpha_buttons[current_tap_cmd][tap_count % sz];
+            compose_buf[compose_len++] = c;
+        }
+    }
+
+    current_tap_cmd = -1;
+    tap_count       =  0;
+}
+
+// Process one decoded remote button press
+static void handle_button(int cmd)
+{
+    if (cmd < 0) return;
+
+    // MUTE (229): send the composed message
+    if (cmd == 229) {
+        commit_current_char();
+        if (compose_len > 0) {
+            compose_buf[compose_len] = '\0';
+            UART1_Send(compose_buf);
+
+            snprintf(DATA1, sizeof(DATA1),
+                     "{\"state\":{\"desired\":{\"message\":\"%s\"}}}\r\n\r\n",
+                     compose_buf);
+
+            UART_PRINT("\n\rSending to AWS IoT...\n\r");
+            http_post(lRetVal);
+
+            Message("SENT to UART & AWS: ");
+            Message(compose_buf);
+            Message("\n\r");
+            compose_len = 0;
+        }
+        render_display();
+        return;
+    }
+
+    // LAST (184): delete
+    if (cmd == 184) {
+        if (current_tap_cmd >= 0) {
+            // Cancel the character currently being cycled; do NOT commit it
+            current_tap_cmd = -1;
+            tap_count       =  0;
+        } else if (compose_len > 0) {
+            compose_len--;
+        }
+        render_display();
+        return;
+    }
+
+    // MULTI-TAP Logic
+    if (get_taps_size(cmd) > 0) {
+        if (current_tap_cmd == cmd) {
+            // Same button: cycle to next character
+            tap_count++;
+        } else {
+            // Different button: commit the previous one and start new cycle
+            commit_current_char();
+            current_tap_cmd = cmd;
+            tap_count = 0;
+        }
+
+        // RESET THE TIMER: Set value to 0 to restart the 2-second countdown
+        MAP_TimerLoadSet(TIMERA1_BASE, TIMER_A, 0);
+        render_display();
+    }
+}
+
+//*****************************************************************************
+//
+//! This function updates the date and time of CC3200.
+//!
+//! \param None
+//!
+//! \return
+//!     0 for success, negative otherwise
+//!
+//*****************************************************************************
+
+static int set_time() {
+    long retVal;
+
+    g_time.tm_day = DATE;
+    g_time.tm_mon = MONTH;
+    g_time.tm_year = YEAR;
+    g_time.tm_sec = HOUR;
+    g_time.tm_hour = MINUTE;
+    g_time.tm_min = SECOND;
+
+    retVal = sl_DevSet(SL_DEVICE_GENERAL_CONFIGURATION,
+                          SL_DEVICE_GENERAL_CONFIGURATION_DATE_TIME,
+                          sizeof(SlDateTime),(unsigned char *)(&g_time));
+
+    ASSERT_ON_ERROR(retVal);
+    return SUCCESS;
+}
+
+int main(void) {
+   lRetVal = -1;
+    // Hardware initialization
+   BoardInit();
+   PinMuxConfig();
+   SPIconfig();
+
+   Adafruit_Init();
+
+   // UART0: debug output to host (CCS console)
+   InitTerm();
+   ClearTerm();
+   Message("Board-to-board texting ready\n\r");
+   Message("MUTE = SEND   LAST = DELETE\n\r");
+
+   // initialize global default app configuration
+   g_app_config.host = SERVER_NAME;
+   g_app_config.port = GOOGLE_DST_PORT;
+
+   // UART1: board-to-board messaging with interrupt-driven RX
+   UART1_Init();
+
+   // SysTick: microsecond pulse timer for IR decoding
+   SysTick_Init();
+
+   // RDA5807 RADIO MODULE LIBRARY CALLED HERE
+   RDA5807M_Init();
+   int rc = RDA5807M_TuneFrequency(90.3f);
+   UART_PRINT("RDA5807M result: %d\n\r", rc);
+
+   // GPIOA1 pin 7: IR receiver input (both edges)
+   MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
+   while (!MAP_PRCMPeripheralStatusGet(PRCM_GPIOA1));
+   MAP_GPIOIntRegister(GPIOA1_BASE, Remote_Handler);
+   MAP_GPIOIntTypeSet(GPIOA1_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
+   MAP_GPIOIntEnable(GPIOA1_BASE, GPIO_PIN_7);
+
+   // Timer A1: one-shot 2-second timer for multi-tap commit
+   Timer_IF_Init(PRCM_TIMERA1, TIMERA1_BASE, TIMER_CFG_PERIODIC_UP, TIMER_BOTH, 0);
+   MAP_TimerEnable(TIMERA1_BASE, TIMER_BOTH);
+
+   render_display();
+
+   //Connect the CC3200 to the local access point
+   lRetVal = connectToAccessPoint();
+   //Set time so that encryption can be used
+   lRetVal = set_time();
+   if(lRetVal < 0) {
+       UART_PRINT("Unable to set time in the device");
+       LOOP_FOREVER();
+   }
+   //Connect to the website with TLS encryption
+   lRetVal = tls_connect();
+   if(lRetVal < 0) {
+       ERR_PRINT(lRetVal);
+   }
+
+   UART_PRINT("Enter message to send to AWS: ");
+   while (1)
+   {
+       // 1. A complete IR burst has arrived (decode and handle)
+       if (timer_counter == 1 && pulse_idx > 0) {
+           timer_counter = 0;
+           int rc5_code = decode_RC5();
+           pulse_idx    = 0;
+           handle_button(fetch_cmd(rc5_code));
+       }
+
+       // 2. Multi-tap timeout fired (commit the pending character)
+       if (current_tap_cmd >= 0) {
+           // Check if 2 seconds (160 million ticks at 80 Mhz) have passed
+           if (MAP_TimerValueGet(TIMERA1_BASE, TIMER_A) > 160000000) {
+               commit_current_char();
+               render_display();
+           }
+       }
+
+       // 3. A new message arrived over UART1
+       if (new_message) {
+           new_message = false;
+           Message("RECV: ");
+           Message(recv_buf);
+           Message("\n\r");
+           render_display();
+       }
+   }
+
+}
+
+static int http_post(int iTLSSockID){
+    char acSendBuff[512];
+    char acRecvbuff[1460];
+    char cCLLength[200];
+    char* pcBufHeaders;
+    int lRetVal = 0;
+
+    pcBufHeaders = acSendBuff;
+    strcpy(pcBufHeaders, POSTHEADER);
+    pcBufHeaders += strlen(POSTHEADER);
+    strcpy(pcBufHeaders, HOSTHEADER);
+    pcBufHeaders += strlen(HOSTHEADER);
+    strcpy(pcBufHeaders, CHEADER);
+    pcBufHeaders += strlen(CHEADER);
+    strcpy(pcBufHeaders, "\r\n\r\n");
+
+    int dataLength = strlen(DATA1);
+
+    strcpy(pcBufHeaders, CTHEADER);
+    pcBufHeaders += strlen(CTHEADER);
+    strcpy(pcBufHeaders, CLHEADER1);
+
+    pcBufHeaders += strlen(CLHEADER1);
+    sprintf(cCLLength, "%d", dataLength);
+
+    strcpy(pcBufHeaders, cCLLength);
+    pcBufHeaders += strlen(cCLLength);
+    strcpy(pcBufHeaders, CLHEADER2);
+    pcBufHeaders += strlen(CLHEADER2);
+
+    strcpy(pcBufHeaders, DATA1);
+    pcBufHeaders += strlen(DATA1);
+
+    int testDataLength = strlen(pcBufHeaders);
+
+    UART_PRINT(acSendBuff);
+    //
+    // Send the packet to the server */
+    //
+    lRetVal = sl_Send(iTLSSockID, acSendBuff, strlen(acSendBuff), 0);
+    if(lRetVal < 0) {
+        UART_PRINT("POST failed. Error Number: %i\n\r",lRetVal);
+        sl_Close(iTLSSockID);
+        return lRetVal;
+    }
+    lRetVal = sl_Recv(iTLSSockID, &acRecvbuff[0], sizeof(acRecvbuff), 0);
+    if(lRetVal < 0) {
+        UART_PRINT("Received failed. Error Number: %i\n\r",lRetVal);
+        //sl_Close(iSSLSockID);
+       return lRetVal;
+    }
+    else {
+        acRecvbuff[lRetVal+1] = '\0';
+        UART_PRINT(acRecvbuff);
+        UART_PRINT("\n\r\n\r");
+    }
+
+    return 0;
+}
+
