@@ -78,6 +78,9 @@
 // RDA5807M Radio Module
 #include "RDA5807M/rda5807m.h"
 
+// API for Radio Explorer UI
+#include "OLED_UI/oled_ui.h"
+
 //From UART_Demo
 #define CONSOLE              UARTA0_BASE
 #define UartGetChar()        MAP_UARTCharGet(CONSOLE)
@@ -706,6 +709,14 @@ int main(void) {
    RDA5807M_Init();
    int rc = RDA5807M_TuneFrequency(90.3f);
    UART_PRINT("RDA5807M result: %d\n\r", rc);
+
+   // TESTING OLED_UI API
+   // Once, after Adafruit_Init() + SPIconfig()
+   oled_ui_init();
+
+   // After a new RDS or Last.fm response arrives:
+   oled_ui_update_radio("90.3 FM", "KDVS", "Clocks", "Coldplay", 42, 80);
+   oled_ui_update_artist_bio("Coldplay are a British rock band...");
 
    // GPIOA1 pin 7: IR receiver input (both edges)
    MAP_PRCMPeripheralClkEnable(PRCM_GPIOA1, PRCM_RUN_MODE_CLK);
