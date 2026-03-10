@@ -40,14 +40,18 @@ iGPIO1.GPIO25.$used = false;
 iGPIO1.GPIO30.$used = false;
 iGPIO1.GPIO31.$used = false;
 iGPIO1.GPIO32.$used = false;
+const iI2C1         = scripting.addPeripheral("I2C");
+iI2C1.$name         = "MyI2C1";
+iI2C1.SCL.$assign   = "GP10";
+iI2C1.SDA.$assign   = "GP11";
 const iSPI1         = scripting.addPeripheral("SPI");
 iSPI1.$name         = "MySPI1";
 const iUART1        = scripting.addPeripheral("UART");
 iUART1.$name        = "MyUART1";
 iUART1.RTS.$used    = false;
 iUART1.CTS.$used    = false;
-iUART1.TX.$assign   = "GP10";
-iUART1.RX.$assign   = "GP11";
+iUART1.TX.$assign   = "GP01";
+iUART1.RX.$assign   = "GP02";
 
 /**
  * Pinmux solution for unlocked pins/peripherals. This ensures that minor changes to the automatic solver in a future
@@ -59,9 +63,10 @@ iGPIO1.GPIO09.$suggestSolution = "GP09";
 iGPIO1.GPIO12.$suggestSolution = "GP12";
 iGPIO1.GPIO13.$suggestSolution = "GP13";
 iGPIO1.GPIO15.$suggestSolution = "GP15";
+iI2C1.$suggestSolution         = "I2C0";
 iSPI1.$suggestSolution         = "SPI0";
 iSPI1.CS.$suggestSolution      = "GP00";
 iSPI1.CLK.$suggestSolution     = "GP14";
 iSPI1.MISO.$suggestSolution    = "GP30";
 iSPI1.MOSI.$suggestSolution    = "GP16";
-iUART1.$suggestSolution        = "UART1";
+iUART1.$suggestSolution        = "UART0";

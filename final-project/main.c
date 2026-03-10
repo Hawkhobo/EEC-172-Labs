@@ -303,9 +303,9 @@ int main(void) {
 
    // FM Radio
    TEA5767_Init();
-   int rc = TEA5767_TuneFrequency(90.3f);
+   int rc = TEA5767_TuneFrequency(100.5f);
    UART_PRINT("TEA5767 result: %d\n\r", rc);
-   oled_ui_update_radio("90.3 FM", "", "", "", 0, 0);
+   oled_ui_update_radio("100.5 FM", "", "", "", 0, 0);
    oled_ui_render();
 
    // IR Receiver

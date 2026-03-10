@@ -69,11 +69,11 @@ void Adafruit_Init(void) {
   volatile unsigned long delay;
 
   // Using GPIO Pin 01 for RESET
-  GPIOPinWrite(GPIOA1_BASE, 0x4, 0);	// RESET = RESET_LOW
+  GPIOPinWrite(GPIOA1_BASE, RESET_PIN, 0);	// RESET = RESET_LOW
 
   UtilsDelay(80000);
 
-  GPIOPinWrite(GPIOA1_BASE, 0x4, 0x4);	// RESET = RESET_HIGH
+  GPIOPinWrite(GPIOA1_BASE, RESET_PIN, RESET_PIN);	// RESET = RESET_HIGH
   UtilsDelay(80000);
 
 	// Initialization Sequence
