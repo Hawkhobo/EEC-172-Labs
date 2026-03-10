@@ -754,7 +754,7 @@ void oled_ui_navigate_right(void)
 
 void oled_ui_set_view(OledViewID view)
 {
-    if (view != 0 && view < OLED_VIEW_COUNT) {
+    if ((unsigned int)view < (unsigned int)OLED_VIEW_COUNT) {
         g_view = view;
         g_scroll[(int)g_view] = 0;
     }
