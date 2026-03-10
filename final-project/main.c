@@ -72,15 +72,11 @@
 #include "utils/network_utils.h"
 
 // RDA5807M Radio Module
-#include "RDA5807M/rda5807m.h"
-
-// Adafruit init
 #include "adafruit_oled_lib/Adafruit_SSD1351.h"
 
 // API for Radio Explorer UI
 #include "OLED_UI/oled_ui.h"
-
-// IR Receiver and RC-5 Decoder
+#include "TEA5767/tea5767.h"
 #include "TSOP311-IR-RECEIVER/tsop311_ir_receiver.h"
 
 #define DATE                9    /* Current Date */
@@ -231,9 +227,9 @@ int main(void) {
    UART_PRINT("FM Radio Explorer ready\n\r");
 
    // FM Radio
-   RDA5807M_Init();
-   int rc = RDA5807M_TuneFrequency(90.3f);
-   UART_PRINT("RDA5807M init: %d\n\r", rc);
+   TEA5767_Init();
+   int rc = TEA5767_TuneFrequency(90.3f);
+   UART_PRINT("TEA5767 result: %d\n\r", rc);
    oled_ui_update_radio("90.3 FM", "", "", "", 0, 0);
    oled_ui_render();
 
