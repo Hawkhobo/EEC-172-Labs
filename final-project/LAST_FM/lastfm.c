@@ -15,6 +15,7 @@
 // 1  Includes & compile-time guards
 // ===========================================================================
 
+#include <LAST_FM/lastfm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,6 @@
 #include "../OLED_UI/oled_ui.h"
 
 // This module's own header
-#include "lastfm.h"
 
 // Optional TJpgDec support — see lastfm.h §JPEG SETUP
 #ifdef LASTFM_ENABLE_JPEG

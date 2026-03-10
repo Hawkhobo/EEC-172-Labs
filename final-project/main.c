@@ -78,6 +78,7 @@
 #include "OLED_UI/oled_ui.h"
 #include "TEA5767/tea5767.h"
 #include "IR_REMOTE_INPUT/ir_remote_input.h"
+#include "LAST_FM/lastfm.h"
 #include "TSOP311_IR_RECEIVER/tsop311_ir_receiver.h"
 
 
@@ -92,6 +93,9 @@
 #define APPLICATION_VERSION   "WQ26"
 #define SERVER_NAME           "a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com"
 #define GOOGLE_DST_PORT       8443
+
+// Last.fm API key -- register at https://www.last.fm/api/account/create
+#define LASTFM_API_KEY        "21c2eee2edef4c433f750fedbb43fa94"
 
 //*****************************************************************************
 //                      Global Variables for Vector Table
@@ -207,6 +211,8 @@ static int set_time() {
 
 static float g_current_freq = 90.3f;   // Initialised to boot frequency
 static float g_last_freq    = 90.3f;   // Previous station (same as current at boot)
+static bool  g_is_muted     = false;   // Shadow of current mute state
+
 
 // Format a frequency float as "XX.X FM" or "XXX.X FM" into dst[].
 // dst must be at least UI_MAX_STATION_LEN bytes.
@@ -219,24 +225,54 @@ static void format_station(float freq, char *dst)
 
 // Tune to freq_mhz, update globals, refresh OLED radio view.
 // Returns the TEA5767 result code.
+static void query_lastfm(void)
+{
+    // -----------------------------------------------------------------
+    // TODO: replace these with live RDS-decoded artist / track strings
+    //       once your RDS implementation is complete.
+    // -----------------------------------------------------------------
+    int         calls;
+    const char *artist = "Coldplay";
+    const char *track  = "Clocks";
+
+    UART_PRINT("[LastFM] Querying: '%s' by '%s'\n\r", track, artist);
+    calls = LastFM_QueryAndUpdateViews(artist, track);
+    UART_PRINT("[LastFM] %d API call(s) succeeded\n\r", calls);
+
+    // Flag album cover available/unavailable for the ALB placeholder view
+    oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
+}
+
+// Tune to freq_mhz, update globals, refresh OLED radio view.
+// Returns the TEA5767 result code.
 static int tune_and_update(float freq_mhz)
 {
-    int rc = TEA5767_TuneFrequency(freq_mhz);
-
+    int  rc = TEA5767_TuneFrequency(freq_mhz);
+    int  sig;
     char station_str[UI_MAX_STATION_LEN];
 
-    if (rc == TEA5767_OK) {
+    if (rc == TEA5767_OK || rc == TEA5767_ERR_NO_SIGNAL) {
         g_last_freq    = g_current_freq;
         g_current_freq = freq_mhz;
         format_station(g_current_freq, station_str);
         UART_PRINT("Tuned to %.1f FM\n\r", (double)g_current_freq);
+
+        // Read signal level for the OLED signal-strength bars
+        sig = TEA5767_GetSignalStrength();
+        if (sig < 0) sig = 0;   // I2C error -- show zero rather than crash
+
+        // Kick off LastFM metadata fetch
+        query_lastfm();
+
+        oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, sig);
     } else {
-        // Keep displaying the current (still-tuned) station; append an error hint.
         format_station(g_current_freq, station_str);
         UART_PRINT("Tune failed (rc=%d) for %.1f\n\r", rc, (double)freq_mhz);
+        sig = TEA5767_GetSignalStrength();
+        if (sig < 0) sig = 0;
+        oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, sig);
     }
 
-    oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
     oled_ui_set_view(OLED_VIEW_RADIO);
     oled_ui_render();
     return rc;
@@ -294,10 +330,14 @@ int main(void) {
    lRetVal = tls_connect();
    if (lRetVal < 0) {
        UART_PRINT("TLS connect failed: %d\n\r", (int)lRetVal);
-       // Non-fatal for now; LastFM calls will fail gracefully
+       // Non-fatal; LastFM calls will fail gracefully
    }
 
    UART_PRINT("Network Ready\n\r");
+
+   // Set up LastFM API
+   LastFM_Init(LASTFM_API_KEY);
+   UART_PRINT("LastFM initialised\n\r");
 
    // Polling for Remote Inputs
    while (1) {
@@ -306,6 +346,10 @@ int main(void) {
           int rc5_code = IR_Decode();
           int cmd      = IR_FetchCmd(rc5_code);
           IR_Reset();
+
+          // UART calibration: every decoded command is logged so you can
+          // map unknown buttons by pressing them and reading the console.
+          UART_PRINT("[IR] cmd=0x%02X (%d)\n\r", (unsigned)cmd, cmd);
 
           switch (cmd) {
 
@@ -357,7 +401,7 @@ int main(void) {
                           oled_ui_render();
                       }
                   } else {
-                      // Nothing typed - original behaviour: jump to Radio view
+                      // Nothing typed - original behaviur: jump to Radio view
                       oled_ui_set_view(OLED_VIEW_RADIO);
                       oled_ui_render();
                   }
@@ -384,49 +428,96 @@ int main(void) {
               }
 
               // ---- View navigation ----------------------------------------
-              case IR_BTN_LEFT:
-                  IR_FreqInput_Reset();   // Cancel any pending entry on nav
+              // After navigating to the Album Cover view, trigger a JPEG
+              // fetch if art is already cached from the last LastFM query.
+              case IR_BTN_LEFT: {
+                  IR_FreqInput_Reset();
                   oled_ui_navigate_left();
                   oled_ui_render();
+                  #ifdef LASTFM_ENABLE_JPEG
+                  if (oled_ui_get_view() == OLED_VIEW_ALBUM_COVER &&
+                          LastFM_AlbumArtAvailable()) {
+                      LastFM_RenderAlbumCover();
+                  }
+                  #endif
                   break;
+              }
 
-              case IR_BTN_RIGHT:
-                  IR_FreqInput_Reset();   // Cancel any pending entry on nav
+              case IR_BTN_RIGHT: {
+                  IR_FreqInput_Reset();
                   oled_ui_navigate_right();
                   oled_ui_render();
+                  #ifdef LASTFM_ENABLE_JPEG
+                  if (oled_ui_get_view() == OLED_VIEW_ALBUM_COVER &&
+                          LastFM_AlbumArtAvailable()) {
+                      LastFM_RenderAlbumCover();
+                  }
+                  #endif
                   break;
+              }
 
-              // ---- Content scrolling --------------------------------------
-              case IR_BTN_VOL_UP:
+              // ---- Content scrolling (CH/PG +/- buttons) ------------------
+              // Calibrate IR_BTN_CH_UP / CH_DOWN via UART if needed.
+              case IR_BTN_CH_UP: {
                   oled_ui_scroll_up();
                   oled_ui_render();
                   break;
+              }
 
-              case IR_BTN_VOL_DOWN:
+              case IR_BTN_CH_DOWN: {
                   oled_ui_scroll_down();
                   oled_ui_render();
                   break;
+              }
 
-              // ---- Station seeking ----------------------------------------
-              case IR_BTN_SEEK_UP:
-                  // TODO: increment frequency by 0.2 MHz (one US FM channel step)
+              // ---- Mute / Volume ------------------------------------------
+              // TEA5767 has no digital volume register; the PAM8403 handles
+              // analog gain via its on-board potentiometer.
+              // VOL+ = force unmute, VOL- = force mute, MUTE = toggle.
+              case IR_BTN_MUTE: {
+                  g_is_muted = !g_is_muted;
+                  TEA5767_SetMute(g_is_muted);
+                  break;
+              }
+
+              case IR_BTN_VOL_UP: {
+                  g_is_muted = false;
+                  TEA5767_SetMute(false);
+                  break;
+              }
+
+              case IR_BTN_VOL_DOWN: {
+                  g_is_muted = true;
+                  TEA5767_SetMute(true);
+                  break;
+              }
+
+              // ---- Last station -------------------------------------------
+              case IR_BTN_LAST: {
+                  if (g_last_freq != g_current_freq) {
+                      tune_and_update(g_last_freq);
+                  }
+                  break;
+              }
+
+              // ---- Station seeking (stretch goal) -------------------------
+              case IR_BTN_SEEK_UP: {
+                  // TODO: increment by one US FM channel step (0.2 MHz)
                   // tune_and_update(g_current_freq + 0.2f);
                   break;
+              }
 
-              case IR_BTN_SEEK_DOWN:
-                  // TODO: decrement frequency by 0.2 MHz
+              case IR_BTN_SEEK_DOWN: {
+                  // TODO: decrement by one US FM channel step (0.2 MHz)
                   // tune_and_update(g_current_freq - 0.2f);
                   break;
+              }
 
-              // ---- Mute toggle --------------------------------------------
-              case IR_BTN_MUTE:
-                  // TODO: TEA5767_SetMute(toggle)
+              default: {
+                  UART_PRINT("Unrecognize code - already been logged\n\r");
                   break;
-
-              default:
-                  UART_PRINT("Unknown IR cmd: %d\n\r", cmd);
-                  break;
+              }
           }
       }
-  }
+   }
 }
