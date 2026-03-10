@@ -80,4 +80,46 @@ int TEA5767_Init(void);
  */
 int TEA5767_TuneFrequency(float freq_mhz);
 
+/**
+ * TEA5767_SetMute
+ *
+ * Mutes or unmutes both audio channels by setting or clearing the MUTE bit
+ * (write byte 1, bit 7) while preserving all other register settings.
+ *
+ * The TEA5767 has no read-modify-write capability — every write overwrites
+ * all five bytes. This driver keeps a shadow copy of the last written frame
+ * (g_tx_shadow[]) so that only the MUTE bit is changed here.
+ *
+ * TEA5767_Init() must have been called before this function.
+ *
+ * @param  mute   true  = mute both channels (audio silenced)
+ *                false = unmute (audio restored)
+ *
+ * @return  TEA5767_OK            – write succeeded
+ *          TEA5767_ERR_I2C_WRITE – I2C write failed (mute state unchanged)
+ */
+int TEA5767_SetMute(bool mute);
+
+/**
+ * TEA5767_GetSignalStrength
+ *
+ * Issues a 5-byte I2C read and extracts the 4-bit signal-level ADC (LEV,
+ * read byte 4 bits [7:4]).  The raw value (0-15) is scaled linearly to the
+ * 0-100 range expected by oled_ui_update_radio().
+ *
+ *   scaled = (raw_lev * 100 + 7) / 15    (rounded integer arithmetic)
+ *
+ * Typical values:
+ *   0  - 20  : no / very weak signal (check antenna)
+ *   30 - 60  : moderate reception
+ *   70 - 100 : strong local station
+ *
+ * Call this after TEA5767_TuneFrequency() has already locked the PLL.
+ * It does NOT poll the Ready Flag — it is for periodic status reads only.
+ *
+ * @return  Signal strength 0-100 on success.
+ *          TEA5767_ERR_I2C_READ (negative) on I2C failure.
+ */
+int TEA5767_GetSignalStrength(void);
+
 #endif

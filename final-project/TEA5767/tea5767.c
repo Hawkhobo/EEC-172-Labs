@@ -40,6 +40,17 @@
 #define RF_POLL_MAX         300
 
 // ---------------------------------------------------------------------------
+// Shadow write frame
+//
+// The TEA5767 has no internal register file that can be read back: a read
+// always returns the 5 status bytes, never the last written configuration.
+// To support read-modify-write operations (e.g. toggling MUTE without
+// disturbing the PLL word), keep a module-level copy of the last frame
+// sent.  Every function that writes to the chip must update this shadow.
+// ---------------------------------------------------------------------------
+static uint8_t g_tx_shadow[5];
+
+// ---------------------------------------------------------------------------
 // PLL calculation constants (datasheet 8.4)
 //
 //   N = 4 * (fRF + fIF) / fref          [high-side injection, HLSI=1]
@@ -274,6 +285,12 @@ int TEA5767_Init(void)
         return ret;
     }
 
+    // Mirror the frame we just sent so SetMute can patch it safely later
+     {
+         int k;
+         for (k = 0; k < 5; k++) g_tx_shadow[k] = init_frame[k];
+     }
+
     // Allow the PLL and oscillator to stabilise
     MAP_UtilsDelay(SYS_CLK_HZ / 3 / 100);  // ~10 ms
 
@@ -328,6 +345,12 @@ int TEA5767_TuneFrequency(float freq_mhz)
     if (ret != TEA5767_OK) {
         UART_PRINT("[TEA5767] Tune write failed (%d)\n\r", ret);
         return ret;
+    }
+
+    // Update shadow so SetMute can patch the correct PLL word later
+    {
+           int k;
+           for (k = 0; k < 5; k++) g_tx_shadow[k] = tx[k];
     }
 
     // ---- 4. Poll Ready Flag (RF) in read byte 1 ----------------------------
@@ -400,4 +423,55 @@ int TEA5767_TuneFrequency(float freq_mhz)
 
     UART_PRINT("[TEA5767] Playback active on %.1f MHz.\n\r", (double)freq_mhz);
     return TEA5767_OK;
+}
+
+
+int TEA5767_SetMute(bool mute)
+{
+    int ret;
+    uint8_t tx[5];
+    int k;
+
+    // Copy the last known register state so we only change the MUTE bit
+    for (k = 0; k < 5; k++) tx[k] = g_tx_shadow[k];
+
+    if (mute)
+        tx[0] |=  B1_MUTE;   // Set MUTE bit
+    else
+        tx[0] &= ~B1_MUTE;   // Clear MUTE bit
+
+    ret = i2c_write_bytes(tx, 5);
+    if (ret != TEA5767_OK) {
+        UART_PRINT("[TEA5767] SetMute(%d) write failed (%d)\n\r", (int)mute, ret);
+        return ret;
+    }
+
+    // Commit to shadow only on success
+    g_tx_shadow[0] = tx[0];
+
+    UART_PRINT("[TEA5767] Audio %s\n\r", mute ? "MUTED" : "UNMUTED");
+    return TEA5767_OK;
+}
+
+
+int TEA5767_GetSignalStrength(void)
+{
+    uint8_t rx[5];
+    int     ret;
+    uint8_t raw_lev;
+    int     scaled;
+
+    ret = i2c_read_bytes(rx, 5);
+    if (ret != TEA5767_OK) {
+        UART_PRINT("[TEA5767] GetSignalStrength read failed (%d)\n\r", ret);
+        return ret;   // negative error code
+    }
+
+    // Read byte 4, bits [7:4]: 4-bit signal ADC (0=min, 15=max)
+    raw_lev = (uint8_t)((rx[3] & RB4_LEV_MASK) >> RB4_LEV_SHIFT);
+
+    // Scale 0-15 -> 0-100 with rounding: scaled = (raw * 100 + 7) / 15
+    scaled = ((int)raw_lev * 100 + 7) / 15;
+
+    return scaled;
 }

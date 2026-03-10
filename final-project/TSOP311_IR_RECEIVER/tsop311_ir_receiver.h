@@ -55,6 +55,13 @@
 // --- Auxiliary ---
 #define IR_BTN_MUTE         229    // Mute toggle
 #define IR_BTN_BACK         184    // Back / Return (also Delete in remote-input mode)
+#define IR_BTN_LAST         191    // "Last" / Previous-station recall
+
+// --- Content Scrolling (CH/PG +/- buttons) ---
+// distinct from VOL +/-
+// Used to scroll up/down inside text-heavy OLED views (bio, lyrics, lists).
+#define IR_BTN_CH_UP        246
+#define IR_BTN_CH_DOWN      247
 
 // --- FM Tuning ---
 // *** CALIBRATION NOTE ***
