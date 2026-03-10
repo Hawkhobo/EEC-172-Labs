@@ -14,6 +14,169 @@
 #include "oled_ui.h"
 
 // ===========================================================================
+// JPEG album-cover support  (compiled in only when LASTFM_ENABLE_JPEG is set)
+// ===========================================================================
+// oled_ui.c owns everything that touches pixels during JPEG decode:
+//   - TJpgDec work buffer
+//   - RGB888 to RGB565 conversion macro
+//   - Scale parameter computation (aspect-ratio preserving, letterbox)
+//   - jpeg_out_cb: TJpgDec output callback -> drawPixel()
+//   - oled_ui_render_album_jpeg(): public entry point called by lastfm.c
+//
+// lastfm.c owns the network side:
+//   - Opening the TLS socket to the CDN
+//   - Skipping the HTTP response headers
+//   - jpeg_in_cb: TJpgDec input callback that streams bytes from the socket
+// ===========================================================================
+
+#ifdef LASTFM_ENABLE_JPEG
+#include "../LASTFM/tjpgdec/tjpgdec.h"
+
+// RGB888 (3 bytes) -> RGB565 (16-bit) for the SSD1351
+#define RGB888_TO_565(r, g, b) \
+    ((unsigned int)( (((unsigned int)(r) & 0xF8u) << 8) | \
+                     (((unsigned int)(g) & 0xFCu) << 3) | \
+                     (((unsigned int)(b) & 0xF8u) >> 3) ))
+
+// TJpgDec work area — 3.5 KB comfortably covers 16×16 MCU blocks.
+#define _JPGDEC_WORK_SZ  3500
+static unsigned char s_jpgdec_work[_JPGDEC_WORK_SZ];
+
+// Scaling parameters computed by compute_scale() and used by jpeg_out_cb().
+typedef struct {
+    int src_w, src_h;   // decoded image dimensions (after TJpgDec scale factor)
+    int dst_x, dst_y;   // top-left offset within the content area (letterbox)
+    int dst_w, dst_h;   // final pixel dimensions written to the OLED
+} _ScaleParams;
+
+static _ScaleParams s_scale;
+
+// ---------------------------------------------------------------------------
+// compute_scale
+//
+// Fills s_scale so that a src_w × src_h image is fitted inside the content
+// area (SCREEN_W × CONTENT_H) with the aspect ratio preserved.
+// Any unused border (letterbox / pillar) is already black from the fillRect
+// call in oled_ui_render_album_jpeg().
+// ---------------------------------------------------------------------------
+static void compute_scale(int src_w, int src_h)
+{
+    // Choose the scale that fills the smaller dimension exactly:
+    //   ratio_x = SCREEN_W  / src_w
+    //   ratio_y = CONTENT_H / src_h
+    //   use whichever ratio is smaller (fit-within, not crop)
+    //
+    // Integer comparison: ratio_x <= ratio_y
+    //   <=>  SCREEN_W * src_h <= CONTENT_H * src_w
+    int dst_w, dst_h;
+    if (SCREEN_W * src_h <= CONTENT_H * src_w) {
+        // Width-constrained: fill full width
+        dst_w = SCREEN_W;
+        dst_h = (src_h * SCREEN_W) / src_w;
+    } else {
+        // Height-constrained: fill full content height
+        dst_h = CONTENT_H;
+        dst_w = (src_w * CONTENT_H) / src_h;
+    }
+
+    s_scale.src_w = src_w;
+    s_scale.src_h = src_h;
+    s_scale.dst_w = dst_w;
+    s_scale.dst_h = dst_h;
+    // Centre the image within the content area
+    s_scale.dst_x = (SCREEN_W  - dst_w) / 2;
+    s_scale.dst_y = (CONTENT_H - dst_h) / 2;
+}
+
+// ---------------------------------------------------------------------------
+// jpeg_out_cb — TJpgDec output callback
+//
+// Called by jd_decomp() for each decoded MCU block (up to 16×16 pixels).
+// Converts RGB888 -> RGB565 and maps source pixels onto the OLED content
+// area using integer nearest-neighbour scaling.
+// ---------------------------------------------------------------------------
+static UINT jpeg_out_cb(JDEC *jd, void *bitmap, JRECT *rect)
+{
+    BYTE *rgb = (BYTE *)bitmap;
+    int sy, sx;
+
+    for (sy = rect->top; sy <= rect->bottom; sy++) {
+        for (sx = rect->left; sx <= rect->right; sx++) {
+            BYTE r = *rgb++;
+            BYTE g = *rgb++;
+            BYTE b = *rgb++;
+
+            // Nearest-neighbour map from source pixel to OLED pixel
+            int dx = s_scale.dst_x + (sx * s_scale.dst_w) / s_scale.src_w;
+            int dy = CONTENT_Y + s_scale.dst_y +
+                     (sy * s_scale.dst_h) / s_scale.src_h;
+
+            if (dx >= 0 && dx < SCREEN_W &&
+                dy >= CONTENT_Y && dy < SCREEN_H) {
+                drawPixel(dx, dy, RGB888_TO_565(r, g, b));
+            }
+        }
+    }
+    return 1;  // JDR_OK — continue decoding
+}
+
+/ ---------------------------------------------------------------------------
+// oled_ui_render_album_jpeg — public implementation
+//
+// See oled_ui.h for the full contract.
+// ---------------------------------------------------------------------------
+int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
+{
+    // Clear the content area to black first (letterbox margins stay black)
+    fillRect(0u, (unsigned int)CONTENT_Y,
+             (unsigned int)SCREEN_W, (unsigned int)CONTENT_H, 0x0000u);
+
+    // jd_prepare wants UINT(*)(JDEC*, BYTE*, UINT).
+    // Our OledJpegInFn uses plain C types to avoid exposing tjpgdec.h in
+    // oled_ui.h; the underlying layout is identical, so the cast is safe.
+    JDEC jd;
+    JRESULT jres = jd_prepare(&jd,
+                               (UINT(*)(JDEC *, BYTE *, UINT))in_fn,
+                               s_jpgdec_work, _JPGDEC_WORK_SZ,
+                               device_ctx);
+    if (jres != JDR_OK) {
+        UART_PRINT("[OLED] jd_prepare failed (%d)\n\r", (int)jres);
+        return -8;  // LASTFM_ERR_JPEG — avoid including lastfm.h here
+    }
+
+    UART_PRINT("[OLED] JPEG %u x %u\n\r", jd.width, jd.height);
+
+    // Choose TJpgDec hardware scale factor:
+    //   scale=0 -> full resolution
+    //   scale=1 -> 1/2 in each dimension  (use for images >= 128 px wide)
+    //   scale=2 -> 1/4                    (use for very large images >= 512 px)
+    // After TJpgDec scaling, compute_scale() handles the final NN step.
+    BYTE scale = 0;
+    if (jd.width >= 128) scale = 1;
+    if (jd.width >= 512) scale = 2;
+
+    // Decoded dimensions after TJpgDec halving
+    unsigned int dec_w = jd.width  >> scale;
+    unsigned int dec_h = jd.height >> scale;
+    compute_scale((int)dec_w, (int)dec_h);
+
+    jres = jd_decomp(&jd, jpeg_out_cb, scale);
+    if (jres != JDR_OK) {
+        UART_PRINT("[OLED] jd_decomp failed (%d)\n\r", (int)jres);
+        return -8;  // LASTFM_ERR_JPEG
+    }
+
+    UART_PRINT("[OLED] Album art rendered (%dx%d -> %dx%d at +%d,+%d)\n\r",
+               (int)dec_w, (int)dec_h,
+               s_scale.dst_w, s_scale.dst_h,
+               s_scale.dst_x, s_scale.dst_y);
+    return 0;  // LASTFM_OK
+}
+
+#endif /* LASTFM_ENABLE_JPEG */
+
+
+// ===========================================================================
 // Layout constants
 // ===========================================================================
 
@@ -401,19 +564,12 @@ static void render_album_cover_view(void)
         ui_str(20, by + bh + 6,  "Album art loading", COL_MUTED, BLACK, 1);
         ui_str(28, by + bh + 16, "or unavailable.",   COL_MUTED, BLACK, 1);
     } else {
-        // ------------------------------------------------------------------
-        // TODO: Replace this stub with TJpgDec JPEG rendering.
-        //
-        // Example sketch (once TJpgDec is integrated):
-        //   TJpgDec_setJpgScale(1);
-        //   TJpgDec_setCallback(tft_output);          // pixel callback
-        //   TJpgDec_drawJpg(0, CONTENT_Y,             // top-left
-        //                   jpeg_data, jpeg_len);
-        //
-        // The image should be pre-scaled to 128×116 (content area height).
-        // ------------------------------------------------------------------
-        ui_str(8, CONTENT_Y + 50, "JPEG render pending", COL_MUTED, BLACK, 1);
-        ui_str(8, CONTENT_Y + 60, "(TJpgDec not linked)", COL_MUTED, BLACK, 1);
+        // Art URL is cached — oled_ui_render_album_jpeg() will overwrite this
+        // area immediately after oled_ui_render() returns.  Show a brief
+        // "loading" indicator so the display is not blank during the fetch.
+        int cy = CONTENT_Y + (CONTENT_H / 2) - CHAR_H;
+        ui_str(16, cy,          "Loading album art", COL_LABEL, BLACK, 1);
+        ui_str(34, cy + LINE_H, "Please wait...",   COL_MUTED, BLACK, 1);
     }
 }
 

@@ -18,6 +18,16 @@
 //     oled_ui_scroll_up/down()           — scroll content (does NOT redraw)
 //     oled_ui_render()                   — repaint
 //
+// ALBUM COVER / JPEG
+// ------------------
+//   oled_ui_render() draws a placeholder for the album cover view.
+//   To decode and stream a JPEG onto the OLED, call:
+//     oled_ui_render_album_jpeg(in_fn, device_ctx)
+//   where in_fn is a TJpgDec-compatible input callback supplied by the
+//   LASTFM module.  All pixel-level drawing lives here, not in lastfm.c.
+//   See oled_ui_render_album_jpeg() below for full details.
+//   Requires LASTFM_ENABLE_JPEG to be defined project-wide.
+//
 // EXTENDING WITH NEW VIEWS
 // ------------------------
 //   1. Add a new entry to OledViewID (before OLED_VIEW_COUNT).
@@ -77,13 +87,11 @@ typedef struct {
 } RadioViewData;
 
 // View 1 — Album Cover
-// Full JPEG rendering is deferred pending TJpgDec integration.
-// Set available=true and supply data when ready; the stub will be replaced.
+// Set available=true once the art URL has been fetched by LastFM module.
+// The actual pixel rendering is done by oled_ui_render_album_jpeg(), not
+// by oled_ui_render() — the latter only draws the placeholder / status text.
 typedef struct {
     bool available;
-    // Future fields (TJpgDec):
-    //   const unsigned char *jpeg_data;
-    //   unsigned int         jpeg_len;
 } AlbumCoverData;
 
 // Views 2, 4, 5 — Generic ordered list (similar artists / genre tags / tracks)
@@ -185,6 +193,47 @@ void oled_ui_update_lyrics(bool available, const char *lyrics);
 // all relevant dimension constants over UART0 (uart_if Message/UART_PRINT).
 // Call instead of oled_ui_render() to troubleshoot layout issues.
 void oled_ui_draw_diagnostics(void);
+
+// ---- JPEG album-cover rendering ----
+//
+// Requires LASTFM_ENABLE_JPEG to be defined project-wide and TJpgDec sources
+// present in LASTFM/tjpgdec/.
+//
+// OledJpegInFn — input callback type compatible with TJpgDec's infunc.
+//   Signature mirrors UINT(*)(JDEC*, BYTE*, UINT) without requiring
+//   tjpgdec.h in this header.  The LASTFM module provides jpeg_in_cb
+//   which streams bytes from an open network socket.
+//
+// oled_ui_render_album_jpeg(in_fn, device_ctx)
+//   Drives TJpgDec to decode a JPEG and paint it into the album-cover
+//   content area (rows BANNER_H..127, all 128 columns).
+//
+//   Responsibilities owned here (NOT in lastfm.c):
+//     - TJpgDec work buffer allocation
+//     - jpeg_out_cb: receives decoded RGB888 MCU blocks, converts to RGB565,
+//       scales to fit the content area, and calls drawPixel()
+//     - Aspect-ratio preserving scale + letterbox fill
+//     - jd_prepare() and jd_decomp() call site
+//
+//   Responsibilities owned by the caller (lastfm.c):
+//     - Opening the TLS/HTTP socket to the CDN
+//     - Consuming the HTTP headers
+//     - Providing in_fn (jpeg_in_cb) to stream bytes from the socket
+//     - Closing the socket after this function returns
+//
+//   @param in_fn       TJpgDec-compatible input callback (from lastfm.c)
+//   @param device_ctx  Opaque context pointer passed through to in_fn
+//                      (pointer to _JpegStream in lastfm.c)
+//   @return  0 on success, negative LASTFM_ERR_* on failure.
+//            Returns LASTFM_ERR_NO_JPEG_SUPPORT immediately if
+//            LASTFM_ENABLE_JPEG is not defined.
+#ifdef LASTFM_ENABLE_JPEG
+typedef unsigned int (*OledJpegInFn)(void *jd,
+                                     unsigned char *buf,
+                                     unsigned int nbytes);
+
+int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx);
+#endif /* LASTFM_ENABLE_JPEG */
 
 
 #endif
