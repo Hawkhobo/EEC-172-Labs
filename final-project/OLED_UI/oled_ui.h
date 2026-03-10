@@ -179,4 +179,12 @@ void oled_ui_update_similar_tracks(const char tracks[][UI_MAX_LIST_ITEM_LEN],
 // Set available=false (and lyrics=NULL) when lyrics cannot be retrieved.
 void oled_ui_update_lyrics(bool available, const char *lyrics);
 
+
+
+// Draws a corner-to-corner calibration pattern on the OLED and prints
+// all relevant dimension constants over UART0 (uart_if Message/UART_PRINT).
+// Call instead of oled_ui_render() to troubleshoot layout issues.
+void oled_ui_draw_diagnostics(void);
+
+
 #endif

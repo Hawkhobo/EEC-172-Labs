@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "common.h"
 
 // Adafruit driver layer
 #include "../adafruit_oled_lib/Adafruit_GFX.h"
@@ -47,6 +48,7 @@
 #define GREEN   0x07E0u
 #define BLUE    0x001Fu
 #define RED     0xF800u
+#define MAGENTA 0xF81F
 #define GREY    0x8410u
 #define DARK_GREY 0x39E7u
 
@@ -596,7 +598,7 @@ void oled_ui_navigate_right(void)
 
 void oled_ui_set_view(OledViewID view)
 {
-    if (view >= 0 && view < OLED_VIEW_COUNT) {
+    if (view != 0 && view < OLED_VIEW_COUNT) {
         g_view = view;
         g_scroll[(int)g_view] = 0;
     }
@@ -737,4 +739,169 @@ void oled_ui_update_lyrics(bool available, const char *lyrics)
     } else {
         g_lyrics.text[0] = '\0';
     }
+}
+
+// ===========================================================================
+// Diagnostics
+// ===========================================================================
+//
+// oled_ui_draw_diagnostics()
+//
+// PURPOSE
+//   Verify that the display dimensions and coordinate system match what the
+//   UI code expects.  Call this once from main() *instead* of oled_ui_render()
+//   to produce:
+//     1. A visual calibration pattern on the OLED.
+//     2. A UART0 log of every compile-time constant that controls layout.
+//
+// VISUAL PATTERN (what you should see if everything is correct on 128x128)
+//   - Full-screen red border (pixels 0,0 to 127,127)
+//   - Green cross-hairs at the exact centre (64,64)
+//   - Blue filled rectangle covering rows 0-11 (the banner zone)
+//   - White pixel at each corner: (0,0) (127,0) (0,127) (127,127)
+//   - Yellow text "0,0" near top-left and "127,127" near bottom-right
+//   - Cyan text row at y=CONTENT_Y showing the banner/content split line
+//   - A column of magenta dots every 10 rows along x=0 (y=0,10,20,...,120)
+//
+// HOW TO INTERPRET A WRONG RESULT
+//   - Pattern clipped on right/bottom   WIDTH/HEIGHT or SSD1351W/H too small
+//   - Pattern only in top portion       HEIGHT constant wrong (e.g. =96 not 128)
+//   - Axes swapped                      REMAP register 0x74 may need adjustment
+//   - Corners not at expected coords    coordinate origin offset issue
+//
+// UART LOG (read in CCS console)
+//   DIAG: SSD1351WIDTH  = <value>
+//   DIAG: SSD1351HEIGHT = <value>
+//   DIAG: WIDTH         = <value>   (GFX clip width)
+//   DIAG: HEIGHT        = <value>   (GFX clip height)
+//   DIAG: SCREEN_W      = 128
+//   DIAG: SCREEN_H      = 128
+//   DIAG: BANNER_H      = 12
+//   DIAG: CONTENT_Y     = 12
+//   DIAG: CONTENT_H     = 116
+//   DIAG: LINE_H        = 9
+//   DIAG: CHARS_PER_LINE= 21
+//   DIAG: CONTENT_MAX_LINES = 12
+//   DIAG: drawPixel test at (0,0) (127,0) (0,127) (127,127)
+//   DIAG: done
+
+void oled_ui_draw_diagnostics(void)
+{
+    char buf[48];
+    int  i;
+
+    // ------------------------------------------------------------------
+    // 1. UART log of all layout-critical constants
+    // ------------------------------------------------------------------
+    UART_PRINT("\r\n===== oled_ui DIAGNOSTICS =====\r\n");
+
+    snprintf(buf, sizeof(buf), "DIAG: SSD1351WIDTH       = %d\r\n", SSD1351WIDTH);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: SSD1351HEIGHT      = %d\r\n", SSD1351HEIGHT);
+    UART_PRINT(buf);
+
+    // WIDTH and HEIGHT come from Adafruit_GFX (used for clipping in drawChar)
+    snprintf(buf, sizeof(buf), "DIAG: GFX WIDTH (clip)   = %d\r\n", width());
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: GFX HEIGHT (clip)  = %d\r\n", height());
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: SCREEN_W           = %d\r\n", SCREEN_W);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: SCREEN_H           = %d\r\n", SCREEN_H);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: BANNER_H           = %d\r\n", BANNER_H);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: CONTENT_Y          = %d\r\n", CONTENT_Y);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: CONTENT_H          = %d\r\n", CONTENT_H);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: LINE_H             = %d\r\n", LINE_H);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: CHARS_PER_LINE     = %d\r\n", CHARS_PER_LINE);
+    UART_PRINT(buf);
+
+    snprintf(buf, sizeof(buf), "DIAG: CONTENT_MAX_LINES  = %d\r\n", CONTENT_MAX_LINES);
+    UART_PRINT(buf);
+
+    // ------------------------------------------------------------------
+    // 2. Clear to black and draw calibration pattern
+    // ------------------------------------------------------------------
+    fillScreen(BLACK);
+
+    // Blue rectangle for banner zone (rows 0..BANNER_H-1)
+    fillRect(0u, 0u, (unsigned int)SCREEN_W,
+             (unsigned int)BANNER_H, BLUE);
+
+    // Full-screen red border — 1px thick on all four edges
+    // Top edge
+    drawFastHLine(0, 0,            SCREEN_W,     RED);
+    // Bottom edge
+    drawFastHLine(0, SCREEN_H - 1, SCREEN_W,     RED);
+    // Left edge
+    drawFastVLine(0,           0,  SCREEN_H,     RED);
+    // Right edge
+    drawFastVLine(SCREEN_W - 1, 0, SCREEN_H,     RED);
+
+    // Green cross-hairs at display centre
+    drawFastHLine(0,           SCREEN_H / 2, SCREEN_W, GREEN);
+    drawFastVLine(SCREEN_W / 2, 0,           SCREEN_H, GREEN);
+
+    // Cyan line at CONTENT_Y (banner/content boundary)
+    drawFastHLine(0, CONTENT_Y, SCREEN_W, CYAN);
+
+    // White pixel at each of the four corners
+    drawPixel(0,            0,            WHITE);
+    drawPixel(SCREEN_W - 1, 0,            WHITE);
+    drawPixel(0,            SCREEN_H - 1, WHITE);
+    drawPixel(SCREEN_W - 1, SCREEN_H - 1, WHITE);
+
+    // Magenta dot every 10 rows along the left edge (x=1 to stay visible)
+    for (i = 0; i < SCREEN_H; i += 10)
+        drawPixel(1, i, MAGENTA);
+
+    // Yellow dot every 10 columns along the top edge
+    for (i = 0; i < SCREEN_W; i += 10)
+        drawPixel(i, 1, YELLOW);
+
+    // ------------------------------------------------------------------
+    // 3. Text labels at known pixel positions
+    //    If these appear in the wrong place you know the coord mapping.
+    // ------------------------------------------------------------------
+    // "0,0" near top-left (x=2, y=2) — inside banner zone, expect blue bg
+    ui_str(2, 2, "0,0", WHITE, BLUE, 1);
+
+    // Bottom-right label — drawn at (SCREEN_W - 6*7, SCREEN_H - CHAR_H - 1)
+    //   = (128 - 42, 128 - 9) = (86, 119) for a 7-char string
+    ui_str(SCREEN_W - CHAR_W * 7, SCREEN_H - CHAR_H - 1,
+           "127,127", YELLOW, BLACK, 1);
+
+    // Mid-screen label at the centre cross-hair
+    ui_str(SCREEN_W / 2 - CHAR_W * 3, SCREEN_H / 2 + 2,
+           "64,64", GREEN, BLACK, 1);
+
+    // Content-Y label
+    snprintf(buf, sizeof(buf), "Y=%d", CONTENT_Y);
+    ui_str(SCREEN_W - CHAR_W * (int)strlen(buf), CONTENT_Y + 2,
+           buf, CYAN, BLACK, 1);
+
+    // ------------------------------------------------------------------
+    // 4. Done
+    // ------------------------------------------------------------------
+    UART_PRINT("DIAG: visual pattern drawn -- check OLED for:\r\n");
+    UART_PRINT("      red border at all 4 edges (0,0)..(127,127)\r\n");
+    UART_PRINT("      green crosshairs at centre (64,64)\r\n");
+    UART_PRINT("      blue banner zone rows 0-11\r\n");
+    UART_PRINT("      cyan line at content boundary\r\n");
+    UART_PRINT("      magenta dots left edge every 10 rows\r\n");
+    UART_PRINT("      yellow dots top edge every 10 cols\r\n");
+    UART_PRINT("===== END DIAGNOSTICS =====\r\n\r\n");
 }
