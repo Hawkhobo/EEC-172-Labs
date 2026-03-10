@@ -71,13 +71,15 @@
 // Network utils (WiFi connect + TLS)
 #include "utils/network_utils.h"
 
-// RDA5807M Radio Module
+// for Adafruit_init()
 #include "adafruit_oled_lib/Adafruit_SSD1351.h"
 
-// API for Radio Explorer UI
+// API for FM Radio Explorer
 #include "OLED_UI/oled_ui.h"
 #include "TEA5767/tea5767.h"
-#include "TSOP311-IR-RECEIVER/tsop311_ir_receiver.h"
+#include "IR_REMOTE_INPUT/ir_remote_input.h"
+#include "TSOP311_IR_RECEIVER/tsop311_ir_receiver.h"
+
 
 #define DATE                9    /* Current Date */
 #define MONTH               3     /* Month 1-12 */
@@ -203,6 +205,43 @@ static int set_time() {
     return SUCCESS;
 }
 
+static float g_current_freq = 90.3f;   // Initialised to boot frequency
+static float g_last_freq    = 90.3f;   // Previous station (same as current at boot)
+
+// Format a frequency float as "XX.X FM" or "XXX.X FM" into dst[].
+// dst must be at least UI_MAX_STATION_LEN bytes.
+static void format_station(float freq, char *dst)
+{
+    // TEA5767 supports at most 0.1 MHz resolution (PLL step), so one decimal
+    // place is always sufficient and keeps the label short.
+    snprintf(dst, UI_MAX_STATION_LEN, "%.1f FM", (double)freq);
+}
+
+// Tune to freq_mhz, update globals, refresh OLED radio view.
+// Returns the TEA5767 result code.
+static int tune_and_update(float freq_mhz)
+{
+    int rc = TEA5767_TuneFrequency(freq_mhz);
+
+    char station_str[UI_MAX_STATION_LEN];
+
+    if (rc == TEA5767_OK) {
+        g_last_freq    = g_current_freq;
+        g_current_freq = freq_mhz;
+        format_station(g_current_freq, station_str);
+        UART_PRINT("Tuned to %.1f FM\n\r", (double)g_current_freq);
+    } else {
+        // Keep displaying the current (still-tuned) station; append an error hint.
+        format_station(g_current_freq, station_str);
+        UART_PRINT("Tune failed (rc=%d) for %.1f\n\r", rc, (double)freq_mhz);
+    }
+
+    oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
+    oled_ui_set_view(OLED_VIEW_RADIO);
+    oled_ui_render();
+    return rc;
+}
+
 //*****************************************************************************
 //
 //! main
@@ -261,62 +300,133 @@ int main(void) {
    UART_PRINT("Network Ready\n\r");
 
    // Polling for Remote Inputs
-   while (1)
-     {
-         // A complete IR burst has arrived — decode and dispatch
-         if (IR_MessageReady()) {
-             int rc5_code = IR_Decode();
-             int cmd      = IR_FetchCmd(rc5_code);
-             IR_Reset();
+   while (1) {
+       // A complete IR burst has arrived - decode and dispatch
+      if (IR_MessageReady()) {
+          int rc5_code = IR_Decode();
+          int cmd      = IR_FetchCmd(rc5_code);
+          IR_Reset();
 
-             switch (cmd) {
+          switch (cmd) {
 
-                 // --- View navigation -----------------------------------------
-                 case IR_BTN_LEFT:
-                     oled_ui_navigate_left();
-                     oled_ui_render();
-                     break;
+              // ---- Numeric / frequency entry ------------------------------
+              // Buttons 0-9: accumulate digits and the decimal point.
+              // Button 1 acts as the decimal point
+              // The buffer is previewed live on OLED station field.
+              case IR_BTN_0:
+              case IR_BTN_1:
+              case IR_BTN_2:
+              case IR_BTN_3:
+              case IR_BTN_4:
+              case IR_BTN_5:
+              case IR_BTN_6:
+              case IR_BTN_7:
+              case IR_BTN_8:
+              case IR_BTN_9: {
+                  bool accepted = IR_FreqInput_PressDigit(cmd);
+                  if (accepted) {
+                      // Live-preview: show "> 90.3" style in the station field
+                      char preview[UI_MAX_STATION_LEN];
+                      snprintf(preview, sizeof(preview), "> %s",
+                               IR_FreqInput_GetStr());
+                      oled_ui_update_radio(preview, NULL, NULL, NULL, 0, 0);
+                      oled_ui_set_view(OLED_VIEW_RADIO);
+                      oled_ui_render();
+                      UART_PRINT("Freq entry: [%s]\n\r",
+                                 IR_FreqInput_GetStr());
+                  }
+                  break;
+              }
 
-                 case IR_BTN_RIGHT:
-                     oled_ui_navigate_right();
-                     oled_ui_render();
-                     break;
+              // ---- ENTER: submit frequency --------------------------------
+              // SELECT doubles as ENTER when a frequency is being typed.
+              // When the buffer is empty it falls back to its old role
+              // (switch to the Radio view).
+              case IR_BTN_SELECT: {
+                  if (IR_FreqInput_IsActive()) {
+                      float freq = IR_FreqInput_Submit();  // clears buffer
+                      if (freq > 0.0f) {
+                          tune_and_update(freq);
+                      } else {
+                          // Unparseable string (e.g. just ".") - clear and notify
+                          UART_PRINT("Invalid freq entry - discarded\n\r");
+                          char station_str[UI_MAX_STATION_LEN];
+                          format_station(g_current_freq, station_str);
+                          oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
+                          oled_ui_set_view(OLED_VIEW_RADIO);
+                          oled_ui_render();
+                      }
+                  } else {
+                      // Nothing typed - original behaviour: jump to Radio view
+                      oled_ui_set_view(OLED_VIEW_RADIO);
+                      oled_ui_render();
+                  }
+                  break;
+              }
 
-                 case IR_BTN_SELECT:
-                     oled_ui_set_view(OLED_VIEW_RADIO);
-                     oled_ui_render();
-                     break;
+              // ---- DELETE: backspace the last entered character -----------
+              case IR_BTN_BACK: {
+                  IR_FreqInput_Delete();
+                  if (IR_FreqInput_IsActive()) {
+                      char preview[UI_MAX_STATION_LEN];
+                      snprintf(preview, sizeof(preview), "> %s",
+                               IR_FreqInput_GetStr());
+                      oled_ui_update_radio(preview, NULL, NULL, NULL, 0, 0);
+                  } else {
+                      // Buffer now empty - restore current station label
+                      char station_str[UI_MAX_STATION_LEN];
+                      format_station(g_current_freq, station_str);
+                      oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
+                  }
+                  oled_ui_set_view(OLED_VIEW_RADIO);
+                  oled_ui_render();
+                  break;
+              }
 
-                 // --- Content scrolling ---------------------------------------
-                 case IR_BTN_VOL_UP:
-                     oled_ui_scroll_up();
-                     oled_ui_render();
-                     break;
+              // ---- View navigation ----------------------------------------
+              case IR_BTN_LEFT:
+                  IR_FreqInput_Reset();   // Cancel any pending entry on nav
+                  oled_ui_navigate_left();
+                  oled_ui_render();
+                  break;
 
-                 case IR_BTN_VOL_DOWN:
-                     oled_ui_scroll_down();
-                     oled_ui_render();
-                     break;
+              case IR_BTN_RIGHT:
+                  IR_FreqInput_Reset();   // Cancel any pending entry on nav
+                  oled_ui_navigate_right();
+                  oled_ui_render();
+                  break;
 
-                 // --- Station tuning ------------------------------------------
-                 case IR_BTN_SEEK_UP:
-                     // TODO: increment frequency and re-tune
-                     // e.g. RDA5807M_TuneFrequency(current_freq + 0.2f);
-                     break;
+              // ---- Content scrolling --------------------------------------
+              case IR_BTN_VOL_UP:
+                  oled_ui_scroll_up();
+                  oled_ui_render();
+                  break;
 
-                 case IR_BTN_SEEK_DOWN:
-                     // TODO: decrement frequency and re-tune
-                     break;
+              case IR_BTN_VOL_DOWN:
+                  oled_ui_scroll_down();
+                  oled_ui_render();
+                  break;
 
-                 // --- Mute toggle ---------------------------------------------
-                 case IR_BTN_MUTE:
-                     // TODO: RDA5807M_SetMute(toggle);
-                     break;
+              // ---- Station seeking ----------------------------------------
+              case IR_BTN_SEEK_UP:
+                  // TODO: increment frequency by 0.2 MHz (one US FM channel step)
+                  // tune_and_update(g_current_freq + 0.2f);
+                  break;
 
-                 default:
-                     UART_PRINT("Unknown IR cmd: %d\n\r", cmd);
-                     break;
-             }
-         }
-     }
- }
+              case IR_BTN_SEEK_DOWN:
+                  // TODO: decrement frequency by 0.2 MHz
+                  // tune_and_update(g_current_freq - 0.2f);
+                  break;
+
+              // ---- Mute toggle --------------------------------------------
+              case IR_BTN_MUTE:
+                  // TODO: TEA5767_SetMute(toggle)
+                  break;
+
+              default:
+                  UART_PRINT("Unknown IR cmd: %d\n\r", cmd);
+                  break;
+          }
+      }
+  }
+}

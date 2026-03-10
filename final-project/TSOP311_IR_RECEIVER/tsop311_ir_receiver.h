@@ -46,7 +46,7 @@
 #define IR_BTN_VOL_DOWN     245    // CH/Vol - : tune frequency down / scroll down
 #define IR_BTN_LEFT         240    // Left arrow : navigate to previous OLED view
 #define IR_BTN_RIGHT        241    // Right arrow : navigate to next OLED view
-#define IR_BTN_SELECT       252    // OK / Select : confirm / return to Radio view
+#define IR_BTN_SELECT       252    // OK / Select : confirm / return to Radio view (remote-input mode)
 
 // --- Playback / Seek ---
 #define IR_BTN_SEEK_UP      248    // Next : seek upward to next station
@@ -54,7 +54,22 @@
 
 // --- Auxiliary ---
 #define IR_BTN_MUTE         229    // Mute toggle
-#define IR_BTN_BACK         184    // Back / Return
+#define IR_BTN_BACK         184    // Back / Return (also Delete in remote-input mode)
+
+// --- FM Tuning ---
+// *** CALIBRATION NOTE ***
+// If any code here does not match your remote, print IR_FetchCmd() over UART
+// for each button press and update the constants below accordingly.
+#define IR_BTN_0            0      // Digit 0
+#define IR_BTN_1            1      // Decimal point '.' in remote-input mode
+#define IR_BTN_2            2      // Digit 2
+#define IR_BTN_3            3      // Digit 3
+#define IR_BTN_4            4      // Digit 4
+#define IR_BTN_5            5      // Digit 5
+#define IR_BTN_6            6      // Digit 6
+#define IR_BTN_7            7      // Digit 7
+#define IR_BTN_8            8      // Digit 8
+#define IR_BTN_9            9      // Digit 9
 
 //*****************************************************************************
 //                      Pulse Capture Buffer

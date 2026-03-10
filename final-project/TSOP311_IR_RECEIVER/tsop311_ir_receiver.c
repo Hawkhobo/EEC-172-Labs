@@ -4,10 +4,9 @@
 //
 // See ir_receiver.h for full documentation
 
-#include "tsop311_ir_receiver.h"
-
 #include <stdint.h>
 #include <stdbool.h>
+#include <TSOP311_IR_RECEIVER/tsop311_ir_receiver.h>
 
 // Driverlib includes
 #include "gpio.h"
