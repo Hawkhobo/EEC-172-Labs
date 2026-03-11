@@ -1,4 +1,4 @@
-// LastFM API Client — Implementation
+// LastFM API Client Implementation
 // Jacob Feenstra & Chun-Ho Chen
 // EEC172 WQ2026 Final Project
 //
@@ -33,7 +33,7 @@
 
 // This module's own header
 
-// TJpgDec support — see lastfm.h §JPEG SETUP
+// TJpgDec support see lastfm.h JPEG SETUP
 #include "tjpgdec/tjpgd.h"
 
 // ===========================================================================
@@ -52,7 +52,7 @@ static char   s_api_key[48]     = {0};
 static char   s_img_url[LASTFM_MAX_IMG_URL_LEN] = {0};  // cached art URL
 static int    s_last_error      = LASTFM_OK;
 
-// Shared HTTP receive buffer — reused for every HTTP transaction.
+// Shared HTTP receive buffer reused for every HTTP transaction.
 // All callers are sequential; no concurrency issues.
 static char   s_http_buf[LASTFM_HTTP_BUF_SIZE];
 
@@ -128,7 +128,7 @@ static int json_get_string(const char *json,
                 case '/':  out[i++] = '/';  break;
                 case 'r':  out[i++] = '\r'; break;
                 case 'u': {
-                    // \uXXXX — use '?' for non-ASCII (OLED font is ASCII only)
+                    // \uXXXX use '?' for non-ASCII (OLED font is ASCII only)
                     if (*(p+1) && *(p+2) && *(p+3) && *(p+4)) {
                         unsigned int cp = 0;
                         sscanf(p + 1, "%4x", &cp);
@@ -310,7 +310,7 @@ static const char *http_skip_headers(const char *resp, int resp_len,
 }
 
 // ===========================================================================
-// 5a  Low-level plain HTTP GET  (port 80 — used for all JSON calls)
+// 5a  Low-level plain HTTP GET  (port 80 used for all JSON calls)
 //
 // Resolves hostname, opens TCP socket, sends a minimal HTTP/1.0 GET
 // request, and receives the full response into s_http_buf.
@@ -357,7 +357,7 @@ static int http_get_plain(const char *host, int port, const char *path)
     }
 
     // --- Build and send HTTP/1.0 GET request ---
-    // HTTP/1.0 closes the connection after the response — no chunked encoding,
+    // HTTP/1.0 closes the connection after the response no chunked encoding,
     // no keep-alive complexity.
     char req[512];
     int req_len = snprintf(req, sizeof(req),
@@ -382,7 +382,7 @@ static int http_get_plain(const char *host, int port, const char *path)
     while (space > 0) {
         int n = sl_Recv(sock, s_http_buf + total, space, 0);
         if (n < 0) {
-            // Timeout or error — treat partial data as the full response
+            // Timeout or error treat partial data as the full response
             // if we already received something
             if (total == 0) {
                 UART_PRINT("[LastFM] Recv failed (%d)\n\r", n);
@@ -508,7 +508,7 @@ static int query_track_info(const char *artist, const char *track,
            if (strlen(candidate_url) > 4) {
                // prefer "large" over "extralarge", better for the small OLED
                if (strcmp(size_val, "large") == 0) {
-                   /* Best option — take it immediately */
+                   /* Best option take it immediately */
                    strncpy(s_img_url, candidate_url, LASTFM_MAX_IMG_URL_LEN - 1);
                    s_img_url[LASTFM_MAX_IMG_URL_LEN - 1] = '\0';
                    break;
@@ -527,16 +527,13 @@ static int query_track_info(const char *artist, const char *track,
        }
    }
 
-   /* Rewrite URL for CC3200 compatibility:
-    *  1. .png -> .jpg        : Fastly transcodes on-the-fly; TJpgDec needs JPEG.
-    *  2. https:// -> http:// : CC3200 TLS stack rejects Fastly cert (no root CA
-    *                           in SFLASH). Fastly CDN serves fine on port 80.
-    *  3. ?progressive=false  : Last.fm CDN stores images as progressive JPEGs.
-    *                           TJpgDec only decodes baseline DCT (SOF0).
-    *                           Fastly Image Optimizer re-encodes to baseline
-    *                           when this query parameter is present. */
+   /* Step 1: Sanitise the Last.fm URL so it works as a fallback even if
+    * iTunes fails.  png->jpg so TJpgDec gets a JPEG; https->http to avoid
+    * the CC3200 TLS root-CA error (-340). The result will still be a
+    * progressive JPEG, but at least it won't crash on connect or parse. */
    {
       int url_len = (int)strlen(s_img_url);
+      /* .png -> .jpg */
       if (url_len > 4 &&
           s_img_url[url_len-4] == '.' &&
           s_img_url[url_len-3] == 'p' &&
@@ -546,22 +543,11 @@ static int query_track_info(const char *artist, const char *track,
           s_img_url[url_len-2] = 'p';
           s_img_url[url_len-1] = 'g';
       }
-
-      /* https:// -> http:// : downgrade to plain HTTP to avoid TLS CA error */
+      /* https:// -> http:// */
       if (strncmp(s_img_url, "https://", 8) == 0) {
-          /* Remove the 's' at index 4 by shifting [5..end] one byte left.
-           * turning "https://" (8 chars) into "http://" (7 chars). */
           memmove(s_img_url + 4, s_img_url + 5,
-                  strlen(s_img_url + 5) + 1);  /* +1 for NUL */
+                  strlen(s_img_url + 5) + 1);
       }
-
-      /* Append Fastly IO param to force baseline JPEG re-encoding.
-      * Only append if there is room and no query string already present. */
-     url_len = (int)strlen(s_img_url);
-     if (strstr(s_img_url, "?") == NULL &&
-         url_len + 18 < LASTFM_MAX_IMG_URL_LEN) {
-         strcat(s_img_url, "?progressive=false");
-     }
    }
 
     UART_PRINT("[LastFM] Album art URL: %s\n\r",
@@ -592,8 +578,9 @@ static int query_track_info(const char *artist, const char *track,
 //
 // Fetches artist metadata and fills:
 //   - OLED artist bio  (biography summary, HTML stripped)
-//   - OLED similar artists list
 //   - OLED genre tags  (merged / overwritten with artist-level tags)
+// Note: similar artists are populated by query_similar_artists() via a
+// dedicated artist.getSimilar call that honours &limit=.
 //
 // Returns LASTFM_OK on success, LASTFM_ERR_* on failure.
 // ---------------------------------------------------------------------------
@@ -618,7 +605,7 @@ static int query_artist_info(const char *artist)
     const char *body = http_skip_headers(s_http_buf, bytes, &status);
     if (!body || status != 200) return LASTFM_ERR_HTTP;
 
-    // --- Artist biography (summary field — shorter, HTML-stripped) ---
+    // --- Artist biography (summary field shorter, HTML-stripped) ---
     // The "bio" object has both "summary" (~300 chars) and "content" (full).
     // We use "summary" to stay within UI_MAX_BIO_LEN and within our buffer.
     static char bio[UI_MAX_BIO_LEN];  // static to avoid stack overflow
@@ -647,29 +634,7 @@ static int query_artist_info(const char *artist)
     oled_ui_update_artist_bio(bio);
     UART_PRINT("[LastFM] Bio: %.60s...\n\r", bio);
 
-    // --- Similar artists ---
-    char sim_artists[UI_MAX_LIST_ITEMS][UI_MAX_LIST_ITEM_LEN];
-    int  sim_count = 0;
-
-    // Similar artists live under "similar":{"artist":[...]}
-    const char *sim_block = strstr(body, "\"similar\":{");
-    if (sim_block) {
-        sim_count = json_get_name_array(sim_block, "artist",
-                                        sim_artists, LASTFM_MAX_LIST_ITEMS);
-    }
-
-    if (sim_count > 0) {
-        oled_ui_update_similar_artists(
-            (const char (*)[UI_MAX_LIST_ITEM_LEN])sim_artists, sim_count);
-        UART_PRINT("[LastFM] Similar artists: %d\n\r", sim_count);
-    } else {
-        // Show a helpful placeholder if no data
-        const char placeholder[1][UI_MAX_LIST_ITEM_LEN] = {"No similar artists found"};
-        oled_ui_update_similar_artists(
-            (const char (*)[UI_MAX_LIST_ITEM_LEN])placeholder, 1);
-    }
-
-    // --- Genre tags (from artist — typically higher quality than track tags) ---
+    // --- Genre tags (from artist typically higher quality than track tags) ---
     char tags[UI_MAX_LIST_ITEMS][UI_MAX_LIST_ITEM_LEN];
     int  tag_count = 0;
 
@@ -680,7 +645,7 @@ static int query_artist_info(const char *artist)
     }
 
     if (tag_count > 0) {
-        // Artist tags overwrite what track.getInfo set — artist tags are richer
+        // Artist tags overwrite what track.getInfo set artist tags are richer
         oled_ui_update_genre_tags(
             (const char (*)[UI_MAX_LIST_ITEM_LEN])tags, tag_count);
         UART_PRINT("[LastFM] Artist tags: %d\n\r", tag_count);
@@ -690,7 +655,63 @@ static int query_artist_info(const char *artist)
 }
 
 // ---------------------------------------------------------------------------
-// 6c  Similar / top tracks
+// 6c  artist.getSimilar
+//
+// Dedicated call for similar artists.  artist.getInfo embeds a hard-capped
+// list of 5 similar artists in its response regardless of any limit parameter;
+// artist.getSimilar is a separate endpoint that honours &limit= and can
+// return up to LASTFM_MAX_LIST_ITEMS entries.
+//
+// Fills OLED_VIEW_SIMILAR_ARTISTS.
+// Returns LASTFM_OK on success, LASTFM_ERR_* on failure.
+// ---------------------------------------------------------------------------
+static int query_similar_artists(const char *artist)
+{
+    char enc_artist[128];
+    url_encode(artist, enc_artist, sizeof(enc_artist));
+
+    char path[384];
+    snprintf(path, sizeof(path),
+             "/2.0/?method=artist.getsimilar"
+             "&artist=%s"
+             "&api_key=%s"
+             "&autocorrect=1&limit=%d"
+             "&format=json",
+             enc_artist, s_api_key, LASTFM_MAX_LIST_ITEMS);
+
+    int bytes = http_get_plain(LASTFM_API_HOST, LASTFM_API_PORT, path);
+    if (bytes < 0) return bytes;
+
+    int status = 0;
+    const char *body = http_skip_headers(s_http_buf, bytes, &status);
+    if (!body || status != 200) return LASTFM_ERR_HTTP;
+
+    // Response: {"similarartists":{"artist":[{"name":"...","match":"..."},...]},...}
+    char sim_artists[UI_MAX_LIST_ITEMS][UI_MAX_LIST_ITEM_LEN];
+    int  sim_count = 0;
+
+    const char *sim_block = strstr(body, "\"similarartists\":{");
+    if (sim_block) {
+        sim_count = json_get_name_array(sim_block, "artist",
+                                        sim_artists, LASTFM_MAX_LIST_ITEMS);
+    }
+
+    if (sim_count > 0) {
+        oled_ui_update_similar_artists(
+            (const char (*)[UI_MAX_LIST_ITEM_LEN])sim_artists, sim_count);
+        UART_PRINT("[LastFM] artist.getSimilar: %d results\n\r", sim_count);
+    } else {
+        const char placeholder[1][UI_MAX_LIST_ITEM_LEN] = {"No similar artists found"};
+        oled_ui_update_similar_artists(
+            (const char (*)[UI_MAX_LIST_ITEM_LEN])placeholder, 1);
+        UART_PRINT("[LastFM] artist.getSimilar: no results\n\r");
+    }
+
+    return LASTFM_OK;
+}
+
+// ---------------------------------------------------------------------------
+// 6d  Similar / top tracks
 //
 // Attempts track.getSimilar first.  As of 2025, this endpoint often returns
 // an empty list; if fewer than 2 results are found, falls back to
@@ -728,7 +749,7 @@ static int query_similar_tracks(const char *artist, const char *track)
                 // Each track object has "name" (title) and nested "artist"."name"
                 const char *sim_block = strstr(body, "\"similartracks\":{");
                 if (sim_block) {
-                    // Extract track names with artist suffix:  "Title – Artist"
+                    // Extract track names with artist suffix:  "Title, Artist"
                     char track_names[UI_MAX_LIST_ITEMS][UI_MAX_LIST_ITEM_LEN];
                     int count = json_get_name_array(sim_block, "track",
                                                     track_names,
@@ -802,7 +823,7 @@ static int query_similar_tracks(const char *artist, const char *track)
 // --------------------------------
 //   lastfm.c (here):
 //     - _JpegStream: context struct that holds the open socket + chunk buffers
-//     - jpeg_in_cb:  TJpgDec input callback — feeds bytes from the socket
+//     - jpeg_in_cb:  TJpgDec input callback feeds bytes from the socket
 //     - parse_url:   splits a "https://host/path" URL into components
 //     - LastFM_RenderAlbumCover: opens TLS socket, skips HTTP headers,
 //       builds _JpegStream, then calls oled_ui_render_album_jpeg() and
@@ -907,7 +928,7 @@ static int parse_url(const char *url,
 }
 
 // ---------------------------------------------------------------------------
-// 7c  LastFM_RenderAlbumCover — public implementation
+// 7c  LastFM_RenderAlbumCover public implementation
 //
 // Network responsibility only:
 //   1. Parse the cached image URL into host + path
@@ -915,7 +936,7 @@ static int parse_url(const char *url,
 //   3. Consume the HTTP response headers byte-by-byte
 //   4. Stash the first JPEG bytes in _JpegStream.preamble
 //   5. Call oled_ui_render_album_jpeg(jpeg_in_cb, &stream)
-//      — oled_ui.c owns everything from that call onward (decode + draw)
+//       oled_ui.c owns everything from that call onward (decode + draw)
 //   6. Close the socket and return
 // ---------------------------------------------------------------------------
 int LastFM_RenderAlbumCover(void)
@@ -1170,7 +1191,7 @@ int LastFM_QueryAndUpdateViews(const char *artist, const char *track)
     if (rc == LASTFM_OK) {
         successes++;
         // Notify album cover view that art may be available.
-        // Only set when JPEG support is compiled in — without it, the view
+        // Only set when JPEG support is compiled in without it, the view
         // keeps available=false and shows the "unavailable" placeholder,
         // which is correct since LastFM_RenderAlbumCover() will be a no-op.
         if (s_img_url[0] != '\0') {
@@ -1208,7 +1229,18 @@ int LastFM_QueryAndUpdateViews(const char *artist, const char *track)
         s_last_error = rc;
     }
 
-    UART_PRINT("[LastFM] QueryAndUpdateViews complete: %d/3 calls succeeded\n\r",
+    // --- Call 4: artist.getSimilar ---
+    // Dedicated endpoint; unlike artist.getInfo's embedded list this one
+    // honours &limit= and can return up to LASTFM_MAX_LIST_ITEMS entries.
+    rc = query_similar_artists(query_artist);
+    if (rc == LASTFM_OK) {
+        successes++;
+    } else {
+        UART_PRINT("[LastFM] artist.getSimilar failed (%d)\n\r", rc);
+        s_last_error = rc;
+    }
+
+    UART_PRINT("[LastFM] QueryAndUpdateViews complete: %d/4 calls succeeded\n\r",
                successes);
     return successes;
 }
