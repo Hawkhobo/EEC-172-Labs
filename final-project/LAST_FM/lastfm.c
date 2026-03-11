@@ -527,8 +527,14 @@ static int query_track_info(const char *artist, const char *track,
        }
    }
 
-   // LastFM can cleanly convert PNG's to JPEG, which is a lot better for our lightweight microcontroller
-   //and available libraries!
+   /* Rewrite URL for CC3200 compatibility:
+    *  1. .png -> .jpg        : Fastly transcodes on-the-fly; TJpgDec needs JPEG.
+    *  2. https:// -> http:// : CC3200 TLS stack rejects Fastly cert (no root CA
+    *                           in SFLASH). Fastly CDN serves fine on port 80.
+    *  3. ?progressive=false  : Last.fm CDN stores images as progressive JPEGs.
+    *                           TJpgDec only decodes baseline DCT (SOF0).
+    *                           Fastly Image Optimizer re-encodes to baseline
+    *                           when this query parameter is present. */
    {
       int url_len = (int)strlen(s_img_url);
       if (url_len > 4 &&
@@ -548,6 +554,14 @@ static int query_track_info(const char *artist, const char *track,
           memmove(s_img_url + 4, s_img_url + 5,
                   strlen(s_img_url + 5) + 1);  /* +1 for NUL */
       }
+
+      /* Append Fastly IO param to force baseline JPEG re-encoding.
+      * Only append if there is room and no query string already present. */
+     url_len = (int)strlen(s_img_url);
+     if (strstr(s_img_url, "?") == NULL &&
+         url_len + 18 < LASTFM_MAX_IMG_URL_LEN) {
+         strcat(s_img_url, "?progressive=false");
+     }
    }
 
     UART_PRINT("[LastFM] Album art URL: %s\n\r",

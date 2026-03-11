@@ -76,6 +76,107 @@ typedef struct {
 
 static _ScaleParams s_scale;
 
+// ===========================================================================
+// Color aliases
+// ===========================================================================
+#define BLACK   0x0000u
+#define WHITE   0xFFFFu
+#define CYAN    0x07FFu
+#define YELLOW  0xFFE0u
+#define GREEN   0x07E0u
+#define BLUE    0x001Fu
+#define RED     0xF800u
+#define MAGENTA 0xF81F
+#define GREY    0x8410u
+#define DARK_GREY 0x39E7u
+
+// UI colour scheme - RETHEME ELEMENTS HERE!
+#define COL_BANNER_BG       BLACK
+#define COL_BANNER_ITEM     WHITE
+#define COL_BANNER_ACTIVE   CYAN
+#define COL_BANNER_ACT_TXT  BLACK
+#define COL_DIVIDER         WHITE
+#define COL_LABEL           YELLOW
+#define COL_VALUE           WHITE
+#define COL_MUTED           GREY
+#define COL_PROGRESS_FILL   GREEN
+#define COL_PROGRESS_EMPTY  DARK_GREY
+#define COL_SIGNAL_BAR      BLUE
+#define COL_SECTION_BG      DARK_GREY
+#define COL_UNAVAILABLE     RED
+#define COL_SCROLL_IND      GREY
+
+// ===========================================================================
+// Low-level drawing helpers (all static — internal use only)
+// ===========================================================================
+
+// Draw a null-terminated ASCII string starting at pixel (x, y)
+static void ui_str(int x, int y, const char *s,
+                   unsigned int fg, unsigned int bg, unsigned char sz)
+{
+    while (*s) {
+        drawChar(x, y, (unsigned char)*s++, fg, bg, sz);
+        x += CHAR_W * (int)sz;
+    }
+}
+
+// Clear a rectangular region to black
+static void ui_clear_rect(int x, int y, int w, int h)
+{
+    fillRect((unsigned int)x, (unsigned int)y,
+             (unsigned int)w, (unsigned int)h, BLACK);
+}
+
+// Draw a filled horizontal progress bar.
+//   (x,y) = top-left corner, w/h = total bar size, pct = 0..100
+static void ui_progress_bar(int x, int y, int w, int h, int pct)
+{
+    int fill;
+    if (pct < 0)   pct = 0;
+    if (pct > 100) pct = 100;
+    fill = (w * pct) / 100;
+    if (fill > 0)
+        fillRect((unsigned int)x, (unsigned int)y,
+                 (unsigned int)fill, (unsigned int)h, COL_PROGRESS_FILL);
+    if (fill < w)
+        fillRect((unsigned int)(x + fill), (unsigned int)y,
+                 (unsigned int)(w - fill), (unsigned int)h, COL_PROGRESS_EMPTY);
+}
+
+// Draw 4 signal-strength bars
+// Bars grow in height from left to right.  strength = 0..100
+static void ui_signal_bars(int x, int y, int strength)
+{
+    int filled_bars, i;
+    if (strength < 0)   strength = 0;
+    if (strength > 100) strength = 100;
+    filled_bars = (strength * 4 + 50) / 100;   // round to 0-4 bars
+
+    for (i = 0; i < 4; i++) {
+        int bh = 3 + i * 2;                     // heights: 3, 5, 7, 9
+        int bx = x + i * 5;
+        int by = y + (9 - bh);                  // align bottoms
+        unsigned int col = (i < filled_bars) ? COL_SIGNAL_BAR : DARK_GREY;
+        fillRect((unsigned int)bx, (unsigned int)by,
+                 3u, (unsigned int)bh, col);
+    }
+}
+
+// Draw small scroll-indicator dots on the right edge of the screen.
+//   show_up / show_down  indicate whether more content exists in that direction.
+static void ui_scroll_indicators(bool show_up, bool show_down)
+{
+    if (show_up) {
+        // Two-pixel dot at top-right of content area
+        fillRect(125u, (unsigned int)(CONTENT_Y + 2), 2u, 4u, COL_SCROLL_IND);
+    }
+    if (show_down) {
+        // Two-pixel dot at bottom-right of screen
+        fillRect(125u, (unsigned int)(SCREEN_H - 6), 2u, 4u, COL_SCROLL_IND);
+    }
+}
+
+
 // ---------------------------------------------------------------------------
 // compute_scale
 //
@@ -168,9 +269,18 @@ int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
                       s_jpgdec_work, _JPGDEC_WORK_SZ,
                       device_ctx);
     if (jres != JDR_OK) {
-        UART_PRINT("[OLED] jd_prepare failed (%d)\n\r", (int)jres);
-        return -8;  // LASTFM_ERR_JPEG, avoid including lastfm.h here
-    }
+         /* jres==8 (JDR_FMT3) = progressive/unsupported JPEG standard.
+          * Draw a visible placeholder so the screen is not just black. */
+         const char *reason = (jres == 8) ? "Progressive JPEG" :
+                              (jres == 3) ? "No memory"        : "Bad JPEG";
+         UART_PRINT("[OLED] jd_prepare failed: %s (JDR=%d)\n\r",
+                    reason, (int)jres);
+         fillRect(8u, (unsigned int)(CONTENT_Y + 40),
+                  112u, 32u, 0x4208u);
+         ui_str(14, CONTENT_Y + 46, "Art unavailable", WHITE, 0x4208u, 1);
+         ui_str(14, CONTENT_Y + 56, reason,           WHITE, 0x4208u, 1);
+         return -8;
+     }
 
     UART_PRINT("[OLED] JPEG %u x %u\n\r", jd.width, jd.height);
 
@@ -201,36 +311,6 @@ int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
 }
 
 // ===========================================================================
-// Color aliases
-// ===========================================================================
-#define BLACK   0x0000u
-#define WHITE   0xFFFFu
-#define CYAN    0x07FFu
-#define YELLOW  0xFFE0u
-#define GREEN   0x07E0u
-#define BLUE    0x001Fu
-#define RED     0xF800u
-#define MAGENTA 0xF81F
-#define GREY    0x8410u
-#define DARK_GREY 0x39E7u
-
-// UI colour scheme - RETHEME ELEMENTS HERE!
-#define COL_BANNER_BG       BLACK
-#define COL_BANNER_ITEM     WHITE
-#define COL_BANNER_ACTIVE   CYAN
-#define COL_BANNER_ACT_TXT  BLACK
-#define COL_DIVIDER         WHITE
-#define COL_LABEL           YELLOW
-#define COL_VALUE           WHITE
-#define COL_MUTED           GREY
-#define COL_PROGRESS_FILL   GREEN
-#define COL_PROGRESS_EMPTY  DARK_GREY
-#define COL_SIGNAL_BAR      BLUE
-#define COL_SECTION_BG      DARK_GREY
-#define COL_UNAVAILABLE     RED
-#define COL_SCROLL_IND      GREY
-
-// ===========================================================================
 // Internal state
 // ===========================================================================
 static OledViewID g_view = OLED_VIEW_RADIO;
@@ -259,76 +339,6 @@ static const char *k_banner_labels[OLED_VIEW_COUNT] = {
     "TRK",
     "LYR"
 };
-
-// ===========================================================================
-// Low-level drawing helpers (all static — internal use only)
-// ===========================================================================
-
-// Draw a null-terminated ASCII string starting at pixel (x, y)
-static void ui_str(int x, int y, const char *s,
-                   unsigned int fg, unsigned int bg, unsigned char sz)
-{
-    while (*s) {
-        drawChar(x, y, (unsigned char)*s++, fg, bg, sz);
-        x += CHAR_W * (int)sz;
-    }
-}
-
-// Clear a rectangular region to black
-static void ui_clear_rect(int x, int y, int w, int h)
-{
-    fillRect((unsigned int)x, (unsigned int)y,
-             (unsigned int)w, (unsigned int)h, BLACK);
-}
-
-// Draw a filled horizontal progress bar.
-//   (x,y) = top-left corner, w/h = total bar size, pct = 0..100
-static void ui_progress_bar(int x, int y, int w, int h, int pct)
-{
-    int fill;
-    if (pct < 0)   pct = 0;
-    if (pct > 100) pct = 100;
-    fill = (w * pct) / 100;
-    if (fill > 0)
-        fillRect((unsigned int)x, (unsigned int)y,
-                 (unsigned int)fill, (unsigned int)h, COL_PROGRESS_FILL);
-    if (fill < w)
-        fillRect((unsigned int)(x + fill), (unsigned int)y,
-                 (unsigned int)(w - fill), (unsigned int)h, COL_PROGRESS_EMPTY);
-}
-
-// Draw 4 signal-strength bars
-// Bars grow in height from left to right.  strength = 0..100
-static void ui_signal_bars(int x, int y, int strength)
-{
-    int filled_bars, i;
-    if (strength < 0)   strength = 0;
-    if (strength > 100) strength = 100;
-    filled_bars = (strength * 4 + 50) / 100;   // round to 0-4 bars
-
-    for (i = 0; i < 4; i++) {
-        int bh = 3 + i * 2;                     // heights: 3, 5, 7, 9
-        int bx = x + i * 5;
-        int by = y + (9 - bh);                  // align bottoms
-        unsigned int col = (i < filled_bars) ? COL_SIGNAL_BAR : DARK_GREY;
-        fillRect((unsigned int)bx, (unsigned int)by,
-                 3u, (unsigned int)bh, col);
-    }
-}
-
-// Draw small scroll-indicator dots on the right edge of the screen.
-//   show_up / show_down  indicate whether more content exists in that direction.
-static void ui_scroll_indicators(bool show_up, bool show_down)
-{
-    if (show_up) {
-        // Two-pixel dot at top-right of content area
-        fillRect(125u, (unsigned int)(CONTENT_Y + 2), 2u, 4u, COL_SCROLL_IND);
-    }
-    if (show_down) {
-        // Two-pixel dot at bottom-right of screen
-        fillRect(125u, (unsigned int)(SCREEN_H - 6), 2u, 4u, COL_SCROLL_IND);
-    }
-}
 
 // ===========================================================================
 // Text wrapping helpers
