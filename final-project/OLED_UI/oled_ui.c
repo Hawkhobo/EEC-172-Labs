@@ -57,6 +57,9 @@
 // how many text lines fit in the content area
 #define CONTENT_MAX_LINES  (CONTENT_H / LINE_H)
 
+// allow for snappier OLED UI
+#define SCROLL_STEP    3
+
 // RGB888 (3 bytes) -> RGB565 (16-bit) for the SSD1351
 #define RGB888_TO_565(r, g, b) \
     ((unsigned int)( (((unsigned int)(r) & 0xF8u) << 8) | \
@@ -776,14 +779,19 @@ OledViewID oled_ui_get_view(void)
 
 void oled_ui_scroll_up(void)
 {
-    if (g_scroll[(int)g_view] > 0)
-        g_scroll[(int)g_view]--;
+    int view_idx = (int)g_view;
+    g_scroll[view_idx] -= SCROLL_STEP;
+
+    // Ensure we never underflow below line 0
+    if (g_scroll[view_idx] < 0) {
+        g_scroll[view_idx] = 0;
+    }
 }
 
 void oled_ui_scroll_down(void)
 {
     // Upper bound is enforced lazily inside each render function
-    g_scroll[(int)g_view]++;
+    g_scroll[(int)g_view] += SCROLL_STEP;
 }
 
 void oled_ui_reset_scroll(void)
