@@ -48,7 +48,7 @@
 
 // Maximum number of similar artists / tracks / tags to extract.
 // Must be <= UI_MAX_LIST_ITEMS (10).
-#define LASTFM_MAX_LIST_ITEMS    5
+#define LASTFM_MAX_LIST_ITEMS    10
 
 // Maximum image URL length stored internally.
 #define LASTFM_MAX_IMG_URL_LEN   128

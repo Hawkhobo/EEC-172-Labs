@@ -57,6 +57,9 @@
 // how many text lines fit in the content area
 #define CONTENT_MAX_LINES  (CONTENT_H / LINE_H)
 
+// allow for snappier OLED UI
+#define SCROLL_STEP    3
+
 // RGB888 (3 bytes) -> RGB565 (16-bit) for the SSD1351
 #define RGB888_TO_565(r, g, b) \
     ((unsigned int)( (((unsigned int)(r) & 0xF8u) << 8) | \
@@ -104,7 +107,7 @@ static _ScaleParams s_scale;
 #define COL_SIGNAL_BAR      BLUE
 #define COL_SECTION_BG      DARK_GREY
 #define COL_UNAVAILABLE     RED
-#define COL_SCROLL_IND      GREY
+#define COL_SCROLL_IND      MAGENTA
 
 // ===========================================================================
 // Low-level drawing helpers (all static — internal use only)
@@ -168,7 +171,7 @@ static void ui_scroll_indicators(bool show_up, bool show_down)
 {
     if (show_up) {
         // Two-pixel dot at top-right of content area
-        fillRect(125u, (unsigned int)(CONTENT_Y + 2), 2u, 4u, COL_SCROLL_IND);
+        fillRect(125u, (unsigned int)(CONTENT_Y + 2 + BANNER_H), 2u, 4u, COL_SCROLL_IND);
     }
     if (show_down) {
         // Two-pixel dot at bottom-right of screen
@@ -353,13 +356,18 @@ static const char *k_banner_labels[OLED_VIEW_COUNT] = {
 static int ui_line_fit(const char *ptr, int max_chars, int *advance)
 {
     int avail = 0;
+    int printable = 0;
 
-    // Count until newline, end-of-string, or column limit
-    while (ptr[avail] && ptr[avail] != '\n' && avail < max_chars)
+    // Count until newline, end-of-string, or the printable column limit
+    while (ptr[avail] && ptr[avail] != '\n' && printable < max_chars) {
+        if (ptr[avail] != '\r') {
+            printable++;
+        }
         avail++;
+    }
 
-    // Soft break: if we hit the column limit mid-word, back up
-    if (ptr[avail] != '\0' && ptr[avail] != '\n' && avail == max_chars) {
+    // Soft break: if we hit the limit mid-word, back up to the last space
+    if (ptr[avail] != '\0' && ptr[avail] != '\n' && printable == max_chars) {
         int j;
         for (j = avail - 1; j > 0; j--) {
             if (ptr[j] == ' ') { avail = j; break; }
@@ -367,10 +375,15 @@ static int ui_line_fit(const char *ptr, int max_chars, int *advance)
     }
 
     *advance = avail;
-    if (ptr[avail] == '\n' || ptr[avail] == ' ')
-        (*advance)++;    // consume the delimiter without printing it
+    // Consume delimiters (\n, \r, or space) without printing them
+    if (ptr[avail] == '\n' || ptr[avail] == ' ' || ptr[avail] == '\r') {
+        (*advance)++;
+        // If we consumed \r, check if \n follows and consume that too
+        if (ptr[avail] == '\r' && ptr[avail+1] == '\n') (*advance)++;
+        else if (ptr[avail] == '\n' && ptr[avail+1] == '\r') (*advance)++;
+    }
 
-    return avail;        // printable character count
+    return avail; // returns indices to copy, including potential \r to be stripped
 }
 
 // Count the total number of wrapped lines that text produces.
@@ -400,13 +413,12 @@ static int ui_count_lines(const char *text)
 static int ui_render_text_block(const char *text, int y_start,
                                 int skip_lines, unsigned int fg)
 {
-    int   total_lines = 0;
-    int   y = y_start;
-    const char *ptr;
-    char  buf[CHARS_PER_LINE + 1];
+    int total_lines = 0;
+    int y = y_start;
+    const char *ptr = text;
+    char buf[CHARS_PER_LINE + 1];
 
     if (!text || !*text) return 0;
-    ptr = text;
 
     while (*ptr) {
         int advance, fit;
@@ -414,19 +426,23 @@ static int ui_render_text_block(const char *text, int y_start,
 
         if (total_lines >= skip_lines) {
             if (y + CHAR_H <= SCREEN_H) {
-                // Clear this text row then draw
-                ui_clear_rect(0, y, SCREEN_W - 3, LINE_H); // leave 3px for indicator
-                strncpy(buf, ptr, (unsigned int)fit);
-                buf[fit] = '\0';
+                ui_clear_rect(0, y, SCREEN_W, LINE_H); // Clear full 128 width
+
+                // Copy characters, but skip \r specifically
+                int buf_idx = 0;
+                int i;
+                for (i = 0; i < fit && buf_idx < CHARS_PER_LINE; i++) {
+                    if (ptr[i] != '\r') buf[buf_idx++] = ptr[i];
+                }
+                buf[buf_idx] = '\0';
+
                 ui_str(0, y, buf, fg, BLACK, 1);
                 y += LINE_H;
             }
         }
-
         total_lines++;
         ptr += advance;
     }
-
     return total_lines;
 }
 
@@ -545,9 +561,9 @@ static void render_radio_view(void)
     // ---- Row 6: Track progress bar ----
     ui_str(0, y, "Progress:", COL_LABEL, BLACK, 1);
     y += LINE_H;
-    ui_progress_bar(0, y, 110, 6, g_radio.progress_pct);
+    ui_progress_bar(12, y, 80, 6, g_radio.progress_pct);
     snprintf(buf, sizeof(buf), "%3d%%", g_radio.progress_pct);
-    ui_str(112, y - 1, buf, COL_VALUE, BLACK, 1);
+    ui_str(96, y - 1, buf, COL_VALUE, BLACK, 1);
     y += 10;
 
     // ---- Row 7: Signal strength ----
@@ -596,49 +612,48 @@ static int ui_section_header(int y, const char *title)
     return y + LINE_H + 2;
 }
 
-// Render one list entry (possibly wrapping over 2 lines).
+// Render one list entry (possibly wrapping over multiple lines).
 // Returns updated y, or -1 if y has gone off-screen.
 static int ui_render_list_item(int y, int number, const char *text)
 {
-    char line[CHARS_PER_LINE + 1];
-    char full[CHARS_PER_LINE + 1 + 4]; // "nn. " prefix
-    int  prefix_len;
+    char prefix[8];
+    char line_buf[CHARS_PER_LINE + 1];
+    int prefix_len = snprintf(prefix, sizeof(prefix), "%2d. ", number);
+    int text_width_limit = CHARS_PER_LINE - prefix_len; // space left after " 1. "
+    int advance, fit;
+    const char *ptr = text;
 
+    if (!text || *text == '\0') return y;
+
+    // 1. Draw the first line with the number prefix
     if (y + CHAR_H > SCREEN_H) return -1;
 
-    snprintf(full, sizeof(full), "%2d. ", number);
-    prefix_len = (int)strlen(full);
-    strncat(full, text, (unsigned int)(CHARS_PER_LINE - prefix_len));
-    full[CHARS_PER_LINE] = '\0';
-
-    // Does the full string fit on one line?
-    int total_len = (int)strlen(full);
-    if (total_len <= CHARS_PER_LINE) {
-        ui_clear_rect(0, y, SCREEN_W - 3, LINE_H);
-        ui_str(0, y, full, COL_VALUE, BLACK, 1);
-        return y + LINE_H;
-    }
-
-    // Soft-wrap: find last space within column limit
-    int fit = CHARS_PER_LINE;
-    int j;
-    for (j = CHARS_PER_LINE - 1; j > prefix_len; j--) {
-        if (full[j] == ' ') { fit = j; break; }
-    }
-    strncpy(line, full, (unsigned int)fit);
-    line[fit] = '\0';
+    fit = ui_line_fit(ptr, text_width_limit, &advance);
     ui_clear_rect(0, y, SCREEN_W - 3, LINE_H);
-    ui_str(0, y, line, COL_VALUE, BLACK, 1);
-    y += LINE_H;
+    ui_str(0, y, prefix, COL_VALUE, BLACK, 1);
 
-    if (y + CHAR_H <= SCREEN_H) {
-        const char *rest = full + fit;
-        if (*rest == ' ') rest++;
-        strncpy(line, rest, CHARS_PER_LINE);
-        line[CHARS_PER_LINE] = '\0';
+    strncpy(line_buf, ptr, (size_t)fit);
+    line_buf[fit] = '\0';
+    ui_str(prefix_len * CHAR_W, y, line_buf, COL_VALUE, BLACK, 1);
+
+    y += LINE_H;
+    ptr += advance;
+
+    // 2. Loop to handle any number of continuation lines (dynamic wrapping)
+    while (*ptr) {
+        if (y + CHAR_H > SCREEN_H) return -1; // Stop if text goes off-screen
+
+        fit = ui_line_fit(ptr, text_width_limit, &advance);
         ui_clear_rect(0, y, SCREEN_W - 3, LINE_H);
-        ui_str(2, y, line, COL_MUTED, BLACK, 1);   // slightly indented continuation
+
+        strncpy(line_buf, ptr, (size_t)fit);
+        line_buf[fit] = '\0';
+
+        // Use COL_MUTED and indent to the same starting point as line 1
+        ui_str(prefix_len * CHAR_W, y, line_buf, COL_MUTED, BLACK, 1);
+
         y += LINE_H;
+        ptr += advance;
     }
 
     return y;
@@ -692,7 +707,7 @@ static void render_text_view(const char *text, const char *title,
     y = ui_section_header(y, title);
 
     if (!available || !text || text[0] == '\0') {
-        ui_str(0, y, unavail_msg ? unavail_msg : "(No data)", COL_UNAVAILABLE, BLACK, 1);
+        ui_render_text_block(unavail_msg, CONTENT_Y + 10, 0, RED);
         return;
     }
 
@@ -776,14 +791,19 @@ OledViewID oled_ui_get_view(void)
 
 void oled_ui_scroll_up(void)
 {
-    if (g_scroll[(int)g_view] > 0)
-        g_scroll[(int)g_view]--;
+    int view_idx = (int)g_view;
+    g_scroll[view_idx] -= SCROLL_STEP;
+
+    // Ensure we never underflow below line 0
+    if (g_scroll[view_idx] < 0) {
+        g_scroll[view_idx] = 0;
+    }
 }
 
 void oled_ui_scroll_down(void)
 {
     // Upper bound is enforced lazily inside each render function
-    g_scroll[(int)g_view]++;
+    g_scroll[(int)g_view] += SCROLL_STEP;
 }
 
 void oled_ui_reset_scroll(void)
