@@ -561,9 +561,9 @@ static void render_radio_view(void)
     // ---- Row 6: Track progress bar ----
     ui_str(0, y, "Progress:", COL_LABEL, BLACK, 1);
     y += LINE_H;
-    ui_progress_bar(0, y, 110, 6, g_radio.progress_pct);
+    ui_progress_bar(12, y, 80, 6, g_radio.progress_pct);
     snprintf(buf, sizeof(buf), "%3d%%", g_radio.progress_pct);
-    ui_str(112, y - 1, buf, COL_VALUE, BLACK, 1);
+    ui_str(96, y - 1, buf, COL_VALUE, BLACK, 1);
     y += 10;
 
     // ---- Row 7: Signal strength ----
