@@ -104,7 +104,7 @@ static _ScaleParams s_scale;
 #define COL_SIGNAL_BAR      BLUE
 #define COL_SECTION_BG      DARK_GREY
 #define COL_UNAVAILABLE     RED
-#define COL_SCROLL_IND      GREY
+#define COL_SCROLL_IND      MAGENTA
 
 // ===========================================================================
 // Low-level drawing helpers (all static — internal use only)
@@ -168,7 +168,7 @@ static void ui_scroll_indicators(bool show_up, bool show_down)
 {
     if (show_up) {
         // Two-pixel dot at top-right of content area
-        fillRect(125u, (unsigned int)(CONTENT_Y + 2), 2u, 4u, COL_SCROLL_IND);
+        fillRect(125u, (unsigned int)(CONTENT_Y + 2 + BANNER_H), 2u, 4u, COL_SCROLL_IND);
     }
     if (show_down) {
         // Two-pixel dot at bottom-right of screen
