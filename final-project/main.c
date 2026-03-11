@@ -350,26 +350,6 @@ int main(void) {
                   }
                   break;
               }
-
-              // ---- DELETE: backspace the last entered character -----------
-              case IR_BTN_BACK: {
-                  IR_FreqInput_Delete();
-                  if (IR_FreqInput_IsActive()) {
-                      char preview[UI_MAX_STATION_LEN];
-                      snprintf(preview, sizeof(preview), "> %s",
-                               IR_FreqInput_GetStr());
-                      oled_ui_update_radio(preview, NULL, NULL, NULL, 0, 0);
-                  } else {
-                      // Buffer now empty - restore current station label
-                      char station_str[UI_MAX_STATION_LEN];
-                      format_station(g_current_freq, station_str);
-                      oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
-                  }
-                  oled_ui_set_view(OLED_VIEW_RADIO);
-                  oled_ui_render();
-                  break;
-              }
-
               // ---- View navigation ----------------------------------------
               // After navigating to the Album Cover view, trigger a JPEG
               // fetch if art is already cached from the last LastFM query.
@@ -423,41 +403,40 @@ int main(void) {
                   break;
               }
 
-              case IR_BTN_VOL_UP: {
-                  g_is_muted = false;
-                  TEA5767_SetMute(false);
-                  break;
-              }
-
-              case IR_BTN_VOL_DOWN: {
-                  g_is_muted = true;
-                  TEA5767_SetMute(true);
-                  break;
-              }
-
-              // ---- Last station -------------------------------------------
-              case IR_BTN_LAST: {
-                  if (g_last_freq != g_current_freq) {
-                      tune_and_update(g_last_freq);
-                  }
-                  break;
-              }
+              // ---- DELETE / Last station ----------------------------------
+             // cmd 184 serves two purposes depending on context:
+             //   - Freq input active  -> backspace the last typed digit
+             //   - Freq input idle    -> recall the last tuned station
+             case IR_BTN_LAST: {
+                 if (IR_FreqInput_IsActive()) {
+                     IR_FreqInput_Delete();
+                     if (IR_FreqInput_IsActive()) {
+                         char preview[UI_MAX_STATION_LEN];
+                         snprintf(preview, sizeof(preview), "> %s",
+                                  IR_FreqInput_GetStr());
+                         oled_ui_update_radio(preview, NULL, NULL, NULL, 0, 0);
+                     } else {
+                         char station_str[UI_MAX_STATION_LEN];
+                         format_station(g_current_freq, station_str);
+                         oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
+                     }
+                     oled_ui_set_view(OLED_VIEW_RADIO);
+                     oled_ui_render();
+                 } else {
+                     if (g_last_freq != g_current_freq) {
+                         tune_and_update(g_last_freq);
+                     }
+                 }
+                 break;
+             }
 
               // ---- Station seeking (stretch goal) -------------------------
-              case IR_BTN_CH_PLUS: {
-                  // TODO: increment by one US FM channel step (0.2 MHz)
-                  // tune_and_update(g_current_freq + 0.2f);
-                  break;
-              }
-
-              case IR_BTN_CH_MINUS: {
-                  // TODO: decrement by one US FM channel step (0.2 MHz)
-                  // tune_and_update(g_current_freq - 0.2f);
-                  break;
-              }
+              // TODO: when a dedicated seek button is available, implement:
+              //   tune_and_update(g_current_freq + 0.2f);  // CH+
+              //   tune_and_update(g_current_freq - 0.2f);  // CH-
 
               default: {
-                  UART_PRINT("Unrecognize code - already been logged\n\r");
+                  UART_PRINT("Unrecognized code - already been logged\n\r");
                   break;
               }
           }

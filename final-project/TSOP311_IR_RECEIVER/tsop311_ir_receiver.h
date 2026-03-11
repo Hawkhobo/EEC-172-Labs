@@ -42,20 +42,19 @@
 //*****************************************************************************
 
 // --- Navigation ---
-#define IR_BTN_VOL_UP       220    // Vol + : Volume Up
-#define IR_BTN_VOL_DOWN     221    // Vol - : vOLUME Down
+//#define IR_BTN_VOL_UP       220    // Vol + : Volume Up
+//#define IR_BTN_VOL_DOWN     221    // Vol - : vOLUME Down
 #define IR_BTN_LEFT         221    // Left arrow : navigate to previous OLED view
 #define IR_BTN_RIGHT        220    // Right arrow : navigate to next OLED view
 #define IR_BTN_SELECT       160    // OK, return to Radio view (remote-input mode)
 
 // --- Playback / Seek ---
-#define IR_BTN_CH_PLUS      221    // Next : seek upward to next station
-#define IR_BTN_CH_MINUS    220    // Prev : seek downward to previous station
+//#define IR_BTN_CH_PLUS      221    // Next : seek upward to next station
+//#define IR_BTN_CH_MINUS    220    // Prev : seek downward to previous station
 
 // --- Auxiliary ---
 #define IR_BTN_MUTE         229    // Mute toggle
-#define IR_BTN_BACK         184    // Back / Return (also Delete in remote-input mode)
-#define IR_BTN_LAST         184    // "Last" / Previous-station recall
+#define IR_BTN_LAST         184    // Back / Return (also Delete in remote-input mode)
 
 // --- Content Scrolling (BROWSE up/down buttons) ---
 // distinct from VOL +/-
