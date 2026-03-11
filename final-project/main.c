@@ -81,19 +81,6 @@
 #include "LAST_FM/lastfm.h"
 #include "TSOP311_IR_RECEIVER/tsop311_ir_receiver.h"
 
-
-#define DATE                9    /* Current Date */
-#define MONTH               3     /* Month 1-12 */
-#define YEAR                2026  /* Current year */
-#define HOUR                21    /* Time - hours */
-#define MINUTE              20  /* Time - minutes */
-#define SECOND              0     /* Time - seconds */
-
-#define APPLICATION_NAME      "SSL"
-#define APPLICATION_VERSION   "WQ26"
-#define SERVER_NAME           "a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.com"
-#define GOOGLE_DST_PORT       8443
-
 // Last.fm API key -- register at https://www.last.fm/api/account/create
 #define LASTFM_API_KEY        "21c2eee2edef4c433f750fedbb43fa94"
 
@@ -179,36 +166,6 @@ void SPIConfig()
 
 }
 
-
-//*****************************************************************************
-//
-//! This function updates the date and time of CC3200.
-//!
-//! \param None
-//!
-//! \return
-//!     0 for success, negative otherwise
-//!
-//*****************************************************************************
-static int set_time() {
-    long retVal;
-
-    g_time.tm_day = DATE;
-    g_time.tm_mon = MONTH;
-    g_time.tm_year = YEAR;
-    g_time.tm_sec = HOUR;
-    g_time.tm_hour = MINUTE;
-    g_time.tm_min = SECOND;
-
-    retVal = sl_DevSet(SL_DEVICE_GENERAL_CONFIGURATION,
-                          SL_DEVICE_GENERAL_CONFIGURATION_DATE_TIME,
-                          sizeof(SlDateTime),
-                          (unsigned char *)(&g_time));
-
-    ASSERT_ON_ERROR(retVal);
-    return SUCCESS;
-}
-
 static float g_current_freq = 90.3f;   // Initialised to boot frequency
 static float g_last_freq    = 90.3f;   // Previous station (same as current at boot)
 static bool  g_is_muted     = false;   // Shadow of current mute state
@@ -290,6 +247,16 @@ int main(void) {
     // Hardware init
    BoardInit();
    PinMuxConfig();
+
+   // Set up SimpleLink WiFi
+   long lRetVal = connectToAccessPoint();
+    if (lRetVal < 0) {
+        UART_PRINT("Wi-Fi connection failed\n\r");
+        return 1;
+    }
+    UART_PRINT("Network Ready\n\r");
+
+   // SPI for OLED, happens after network is configured over SimpleLink (since sl depends on SPI for configuration)
    SPIConfig();
 
    // OLED display
@@ -310,30 +277,6 @@ int main(void) {
 
    // IR Receiver
    IR_Init();
-
-   // Network: Wi-Fi -> TLS -> LastFM API
-   g_app_config.host = SERVER_NAME;
-   g_app_config.port = GOOGLE_DST_PORT;
-
-   long lRetVal = connectToAccessPoint();
-   if (lRetVal < 0) {
-       UART_PRINT("Wi-Fi connection failed\n\r");
-       LOOP_FOREVER();
-   }
-
-   lRetVal = set_time();
-   if (lRetVal < 0) {
-       UART_PRINT("set_time() failed — TLS will not work\n\r");
-       LOOP_FOREVER();
-   }
-
-   lRetVal = tls_connect();
-   if (lRetVal < 0) {
-       UART_PRINT("TLS connect failed: %d\n\r", (int)lRetVal);
-       // Non-fatal; LastFM calls will fail gracefully
-   }
-
-   UART_PRINT("Network Ready\n\r");
 
    // Set up LastFM API
    LastFM_Init(LASTFM_API_KEY);
@@ -458,13 +401,13 @@ int main(void) {
 
               // ---- Content scrolling (CH/PG +/- buttons) ------------------
               // Calibrate IR_BTN_CH_UP / CH_DOWN via UART if needed.
-              case IR_BTN_CH_UP: {
+              case IR_BTN_UP: {
                   oled_ui_scroll_up();
                   oled_ui_render();
                   break;
               }
 
-              case IR_BTN_CH_DOWN: {
+              case IR_BTN_DOWN: {
                   oled_ui_scroll_down();
                   oled_ui_render();
                   break;
@@ -501,13 +444,13 @@ int main(void) {
               }
 
               // ---- Station seeking (stretch goal) -------------------------
-              case IR_BTN_SEEK_UP: {
+              case IR_BTN_CH_PLUS: {
                   // TODO: increment by one US FM channel step (0.2 MHz)
                   // tune_and_update(g_current_freq + 0.2f);
                   break;
               }
 
-              case IR_BTN_SEEK_DOWN: {
+              case IR_BTN_CH_MINUS: {
                   // TODO: decrement by one US FM channel step (0.2 MHz)
                   // tune_and_update(g_current_freq - 0.2f);
                   break;

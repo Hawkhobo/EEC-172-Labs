@@ -42,41 +42,41 @@
 //*****************************************************************************
 
 // --- Navigation ---
-#define IR_BTN_VOL_UP       244    // CH/Vol + : tune frequency up / scroll up
-#define IR_BTN_VOL_DOWN     245    // CH/Vol - : tune frequency down / scroll down
-#define IR_BTN_LEFT         240    // Left arrow : navigate to previous OLED view
-#define IR_BTN_RIGHT        241    // Right arrow : navigate to next OLED view
-#define IR_BTN_SELECT       252    // OK / Select : confirm / return to Radio view (remote-input mode)
+#define IR_BTN_VOL_UP       220    // Vol + : Volume Up
+#define IR_BTN_VOL_DOWN     221    // Vol - : vOLUME Down
+#define IR_BTN_LEFT         221    // Left arrow : navigate to previous OLED view
+#define IR_BTN_RIGHT        220    // Right arrow : navigate to next OLED view
+#define IR_BTN_SELECT       160    // OK, return to Radio view (remote-input mode)
 
 // --- Playback / Seek ---
-#define IR_BTN_SEEK_UP      248    // Next : seek upward to next station
-#define IR_BTN_SEEK_DOWN    249    // Prev : seek downward to previous station
+#define IR_BTN_CH_PLUS      221    // Next : seek upward to next station
+#define IR_BTN_CH_MINUS    220    // Prev : seek downward to previous station
 
 // --- Auxiliary ---
 #define IR_BTN_MUTE         229    // Mute toggle
 #define IR_BTN_BACK         184    // Back / Return (also Delete in remote-input mode)
-#define IR_BTN_LAST         191    // "Last" / Previous-station recall
+#define IR_BTN_LAST         184    // "Last" / Previous-station recall
 
-// --- Content Scrolling (CH/PG +/- buttons) ---
+// --- Content Scrolling (BROWSE up/down buttons) ---
 // distinct from VOL +/-
 // Used to scroll up/down inside text-heavy OLED views (bio, lyrics, lists).
-#define IR_BTN_CH_UP        246
-#define IR_BTN_CH_DOWN      247
+#define IR_BTN_UP     188
+#define IR_BTN_DOWN   189
 
 // --- FM Tuning ---
 // *** CALIBRATION NOTE ***
 // If any code here does not match your remote, print IR_FetchCmd() over UART
 // for each button press and update the constants below accordingly.
-#define IR_BTN_0            0      // Digit 0
-#define IR_BTN_1            1      // Decimal point '.' in remote-input mode
-#define IR_BTN_2            2      // Digit 2
-#define IR_BTN_3            3      // Digit 3
-#define IR_BTN_4            4      // Digit 4
-#define IR_BTN_5            5      // Digit 5
-#define IR_BTN_6            6      // Digit 6
-#define IR_BTN_7            7      // Digit 7
-#define IR_BTN_8            8      // Digit 8
-#define IR_BTN_9            9      // Digit 9
+#define IR_BTN_0            252    // Digit 0
+#define IR_BTN_1            253    // Decimal point '.' in remote-input mode
+#define IR_BTN_2            248    // Digit 2
+#define IR_BTN_3            249    // Digit 3
+#define IR_BTN_4            244    // Digit 4
+#define IR_BTN_5            245    // Digit 5
+#define IR_BTN_6            240    // Digit 6
+#define IR_BTN_7            241    // Digit 7
+#define IR_BTN_8            236    // Digit 8
+#define IR_BTN_9            237    // Digit 9
 
 //*****************************************************************************
 //                      Pulse Capture Buffer
