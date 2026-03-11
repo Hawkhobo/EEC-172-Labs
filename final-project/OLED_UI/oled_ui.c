@@ -356,13 +356,18 @@ static const char *k_banner_labels[OLED_VIEW_COUNT] = {
 static int ui_line_fit(const char *ptr, int max_chars, int *advance)
 {
     int avail = 0;
+    int printable = 0;
 
-    // Count until newline, end-of-string, or column limit
-    while (ptr[avail] && ptr[avail] != '\n' && avail < max_chars)
+    // Count until newline, end-of-string, or the printable column limit
+    while (ptr[avail] && ptr[avail] != '\n' && printable < max_chars) {
+        if (ptr[avail] != '\r') {
+            printable++;
+        }
         avail++;
+    }
 
-    // Soft break: if we hit the column limit mid-word, back up
-    if (ptr[avail] != '\0' && ptr[avail] != '\n' && avail == max_chars) {
+    // Soft break: if we hit the limit mid-word, back up to the last space
+    if (ptr[avail] != '\0' && ptr[avail] != '\n' && printable == max_chars) {
         int j;
         for (j = avail - 1; j > 0; j--) {
             if (ptr[j] == ' ') { avail = j; break; }
@@ -370,10 +375,15 @@ static int ui_line_fit(const char *ptr, int max_chars, int *advance)
     }
 
     *advance = avail;
-    if (ptr[avail] == '\n' || ptr[avail] == ' ')
-        (*advance)++;    // consume the delimiter without printing it
+    // Consume delimiters (\n, \r, or space) without printing them
+    if (ptr[avail] == '\n' || ptr[avail] == ' ' || ptr[avail] == '\r') {
+        (*advance)++;
+        // If we consumed \r, check if \n follows and consume that too
+        if (ptr[avail] == '\r' && ptr[avail+1] == '\n') (*advance)++;
+        else if (ptr[avail] == '\n' && ptr[avail+1] == '\r') (*advance)++;
+    }
 
-    return avail;        // printable character count
+    return avail; // returns indices to copy, including potential \r to be stripped
 }
 
 // Count the total number of wrapped lines that text produces.
@@ -403,13 +413,12 @@ static int ui_count_lines(const char *text)
 static int ui_render_text_block(const char *text, int y_start,
                                 int skip_lines, unsigned int fg)
 {
-    int   total_lines = 0;
-    int   y = y_start;
-    const char *ptr;
-    char  buf[CHARS_PER_LINE + 1];
+    int total_lines = 0;
+    int y = y_start;
+    const char *ptr = text;
+    char buf[CHARS_PER_LINE + 1];
 
     if (!text || !*text) return 0;
-    ptr = text;
 
     while (*ptr) {
         int advance, fit;
@@ -417,19 +426,23 @@ static int ui_render_text_block(const char *text, int y_start,
 
         if (total_lines >= skip_lines) {
             if (y + CHAR_H <= SCREEN_H) {
-                // Clear this text row then draw
-                ui_clear_rect(0, y, SCREEN_W - 3, LINE_H); // leave 3px for indicator
-                strncpy(buf, ptr, (unsigned int)fit);
-                buf[fit] = '\0';
+                ui_clear_rect(0, y, SCREEN_W, LINE_H); // Clear full 128 width
+
+                // Copy characters, but skip \r specifically
+                int buf_idx = 0;
+                int i;
+                for (i = 0; i < fit && buf_idx < CHARS_PER_LINE; i++) {
+                    if (ptr[i] != '\r') buf[buf_idx++] = ptr[i];
+                }
+                buf[buf_idx] = '\0';
+
                 ui_str(0, y, buf, fg, BLACK, 1);
                 y += LINE_H;
             }
         }
-
         total_lines++;
         ptr += advance;
     }
-
     return total_lines;
 }
 
@@ -694,7 +707,7 @@ static void render_text_view(const char *text, const char *title,
     y = ui_section_header(y, title);
 
     if (!available || !text || text[0] == '\0') {
-        ui_str(0, y, unavail_msg ? unavail_msg : "(No data)", COL_UNAVAILABLE, BLACK, 1);
+        ui_render_text_block(unavail_msg, CONTENT_Y + 10, 0, RED);
         return;
     }
 
