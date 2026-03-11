@@ -599,49 +599,48 @@ static int ui_section_header(int y, const char *title)
     return y + LINE_H + 2;
 }
 
-// Render one list entry (possibly wrapping over 2 lines).
+// Render one list entry (possibly wrapping over multiple lines).
 // Returns updated y, or -1 if y has gone off-screen.
 static int ui_render_list_item(int y, int number, const char *text)
 {
-    char line[CHARS_PER_LINE + 1];
-    char full[CHARS_PER_LINE + 1 + 4]; // "nn. " prefix
-    int  prefix_len;
+    char prefix[8];
+    char line_buf[CHARS_PER_LINE + 1];
+    int prefix_len = snprintf(prefix, sizeof(prefix), "%2d. ", number);
+    int text_width_limit = CHARS_PER_LINE - prefix_len; // space left after " 1. "
+    int advance, fit;
+    const char *ptr = text;
 
+    if (!text || *text == '\0') return y;
+
+    // 1. Draw the first line with the number prefix
     if (y + CHAR_H > SCREEN_H) return -1;
 
-    snprintf(full, sizeof(full), "%2d. ", number);
-    prefix_len = (int)strlen(full);
-    strncat(full, text, (unsigned int)(CHARS_PER_LINE - prefix_len));
-    full[CHARS_PER_LINE] = '\0';
-
-    // Does the full string fit on one line?
-    int total_len = (int)strlen(full);
-    if (total_len <= CHARS_PER_LINE) {
-        ui_clear_rect(0, y, SCREEN_W - 3, LINE_H);
-        ui_str(0, y, full, COL_VALUE, BLACK, 1);
-        return y + LINE_H;
-    }
-
-    // Soft-wrap: find last space within column limit
-    int fit = CHARS_PER_LINE;
-    int j;
-    for (j = CHARS_PER_LINE - 1; j > prefix_len; j--) {
-        if (full[j] == ' ') { fit = j; break; }
-    }
-    strncpy(line, full, (unsigned int)fit);
-    line[fit] = '\0';
+    fit = ui_line_fit(ptr, text_width_limit, &advance);
     ui_clear_rect(0, y, SCREEN_W - 3, LINE_H);
-    ui_str(0, y, line, COL_VALUE, BLACK, 1);
-    y += LINE_H;
+    ui_str(0, y, prefix, COL_VALUE, BLACK, 1);
 
-    if (y + CHAR_H <= SCREEN_H) {
-        const char *rest = full + fit;
-        if (*rest == ' ') rest++;
-        strncpy(line, rest, CHARS_PER_LINE);
-        line[CHARS_PER_LINE] = '\0';
+    strncpy(line_buf, ptr, (size_t)fit);
+    line_buf[fit] = '\0';
+    ui_str(prefix_len * CHAR_W, y, line_buf, COL_VALUE, BLACK, 1);
+
+    y += LINE_H;
+    ptr += advance;
+
+    // 2. Loop to handle any number of continuation lines (dynamic wrapping)
+    while (*ptr) {
+        if (y + CHAR_H > SCREEN_H) return -1; // Stop if text goes off-screen
+
+        fit = ui_line_fit(ptr, text_width_limit, &advance);
         ui_clear_rect(0, y, SCREEN_W - 3, LINE_H);
-        ui_str(2, y, line, COL_MUTED, BLACK, 1);   // slightly indented continuation
+
+        strncpy(line_buf, ptr, (size_t)fit);
+        line_buf[fit] = '\0';
+
+        // Use COL_MUTED and indent to the same starting point as line 1
+        ui_str(prefix_len * CHAR_W, y, line_buf, COL_MUTED, BLACK, 1);
+
         y += LINE_H;
+        ptr += advance;
     }
 
     return y;

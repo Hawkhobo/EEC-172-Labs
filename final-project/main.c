@@ -189,8 +189,8 @@ static void query_lastfm(void)
     //       once your RDS implementation is complete.
     // -----------------------------------------------------------------
     int         calls;
-    const char *artist = "System of a Down";
-    const char *track  = "Toxicity";
+    const char *artist = "Coldplay";
+    const char *track  = "Clocks";
 
     UART_PRINT("[LastFM] Querying: '%s' by '%s'\n\r", track, artist);
     calls = LastFM_QueryAndUpdateViews(artist, track);
