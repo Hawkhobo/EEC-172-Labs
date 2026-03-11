@@ -26,7 +26,7 @@ static char cmd_to_char(int ir_cmd)
 {
     switch (ir_cmd) {
         case IR_BTN_0:  return '0';
-        case IR_BTN_1:  return '.';
+        case IR_BTN_1:  return '1';
         case IR_BTN_2:  return '2';
         case IR_BTN_3:  return '3';
         case IR_BTN_4:  return '4';
@@ -35,6 +35,7 @@ static char cmd_to_char(int ir_cmd)
         case IR_BTN_7:  return '7';
         case IR_BTN_8:  return '8';
         case IR_BTN_9:  return '9';
+        case IR_BTN_DOT:  return '.';
         default:        return '\0';
     }
 }

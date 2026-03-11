@@ -67,7 +67,7 @@
 // If any code here does not match your remote, print IR_FetchCmd() over UART
 // for each button press and update the constants below accordingly.
 #define IR_BTN_0            252    // Digit 0
-#define IR_BTN_1            253    // Decimal point '.' in remote-input mode
+#define IR_BTN_1            253    // Digit 1
 #define IR_BTN_2            248    // Digit 2
 #define IR_BTN_3            249    // Digit 3
 #define IR_BTN_4            244    // Digit 4
@@ -76,6 +76,7 @@
 #define IR_BTN_7            241    // Digit 7
 #define IR_BTN_8            236    // Digit 8
 #define IR_BTN_9            237    // Digit 9
+#define IR_BTN_DOT          129    // Decimal point '.', ENTER on remote
 
 //*****************************************************************************
 //                      Pulse Capture Buffer

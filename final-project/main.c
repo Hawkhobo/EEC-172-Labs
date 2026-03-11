@@ -167,7 +167,7 @@ void SPIConfig()
 }
 
 static float g_current_freq = 90.3f;   // Initialised to boot frequency
-static float g_last_freq    = 90.3f;   // Previous station (same as current at boot)
+static float g_last_freq    = 100.5f;   // Previous station (same as current at boot)
 static bool  g_is_muted     = false;   // Shadow of current mute state
 
 
@@ -270,7 +270,7 @@ int main(void) {
 
    // FM Radio
    TEA5767_Init();
-   int rc = TEA5767_TuneFrequency(100.5f);
+   int rc = TEA5767_TuneFrequency(90.3f);
    UART_PRINT("TEA5767 result: %d\n\r", rc);
    oled_ui_update_radio("100.5 FM", "", "", "", 0, 0);
    oled_ui_render();
@@ -309,7 +309,8 @@ int main(void) {
               case IR_BTN_6:
               case IR_BTN_7:
               case IR_BTN_8:
-              case IR_BTN_9: {
+              case IR_BTN_9:
+              case IR_BTN_DOT: {
                   bool accepted = IR_FreqInput_PressDigit(cmd);
                   if (accepted) {
                       // Live-preview: show "> 90.3" style in the station field
