@@ -135,7 +135,7 @@ BoardInit(void)
 //! \return None.
 //
 //*****************************************************************************
-#define SPI_IF_BIT_RATE  1000000
+#define SPI_IF_BIT_RATE  3000000
 void SPIConfig()
 {
 
@@ -198,6 +198,12 @@ static void query_lastfm(void)
 
     // Flag album cover available/unavailable for the ALB placeholder view
     oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
+
+    // If we made a call, we need to refresh the OLED
+    if (calls > 0) {
+        oled_ui_set_view(OLED_VIEW_RADIO);
+        oled_ui_render();
+    }
 }
 
 // Tune to freq_mhz, update globals, refresh OLED radio view.
@@ -282,6 +288,8 @@ int main(void) {
    LastFM_Init(LASTFM_API_KEY);
    UART_PRINT("LastFM initialised\n\r");
 
+   query_lastfm();
+
    // Polling for Remote Inputs
    while (1) {
        // A complete IR burst has arrived - decode and dispatch
@@ -358,12 +366,10 @@ int main(void) {
                   IR_FreqInput_Reset();
                   oled_ui_navigate_left();
                   oled_ui_render();
-                  #ifdef LASTFM_ENABLE_JPEG
                   if (oled_ui_get_view() == OLED_VIEW_ALBUM_COVER &&
                           LastFM_AlbumArtAvailable()) {
                       LastFM_RenderAlbumCover();
                   }
-                  #endif
                   break;
               }
 
@@ -371,12 +377,10 @@ int main(void) {
                   IR_FreqInput_Reset();
                   oled_ui_navigate_right();
                   oled_ui_render();
-                  #ifdef LASTFM_ENABLE_JPEG
                   if (oled_ui_get_view() == OLED_VIEW_ALBUM_COVER &&
                           LastFM_AlbumArtAvailable()) {
                       LastFM_RenderAlbumCover();
                   }
-                  #endif
                   break;
               }
 

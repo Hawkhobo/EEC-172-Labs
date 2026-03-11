@@ -40,6 +40,7 @@
 #define OLED_UI_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 // ***************************************************************************
 // View identifiers
@@ -227,13 +228,11 @@ void oled_ui_draw_diagnostics(void);
 //   @return  0 on success, negative LASTFM_ERR_* on failure.
 //            Returns LASTFM_ERR_NO_JPEG_SUPPORT immediately if
 //            LASTFM_ENABLE_JPEG is not defined.
-#ifdef LASTFM_ENABLE_JPEG
 typedef unsigned int (*OledJpegInFn)(void *jd,
-                                     unsigned char *buf,
-                                     unsigned int nbytes);
+                                     uint8_t *buf,
+                                     size_t nbytes);
 
 int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx);
-#endif /* LASTFM_ENABLE_JPEG */
 
 
 #endif

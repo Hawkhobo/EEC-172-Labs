@@ -65,7 +65,6 @@
 #define LASTFM_ERR_HTTP          -6   // HTTP status code != 200
 #define LASTFM_ERR_PARSE         -7   // JSON field not found in response
 #define LASTFM_ERR_JPEG          -8   // TJpgDec decode error (JPEG support)
-#define LASTFM_ERR_NO_JPEG_SUPPORT -9 // LASTFM_ENABLE_JPEG not defined
 
 // ***************************************************************************
 // Public API

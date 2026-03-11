@@ -33,10 +33,8 @@
 
 // This module's own header
 
-// Optional TJpgDec support — see lastfm.h §JPEG SETUP
-#ifdef LASTFM_ENABLE_JPEG
-  #include "tjpgdec/tjpgdec.h"
-#endif
+// TJpgDec support — see lastfm.h §JPEG SETUP
+#include "tjpgdec/tjpgd.h"
 
 // ===========================================================================
 // 2  Internal constants & macros
@@ -471,29 +469,86 @@ static int query_track_info(const char *artist, const char *track,
     const char *album_start = strstr(body, "\"album\":{");
     const char *search_region = album_start ? album_start : body;
 
-    // Try extralarge first, then large
-    const char *sizes[] = {"extralarge", "large", "medium", NULL};
-    int si;
-    for (si = 0; sizes[si] != NULL && s_img_url[0] == '\0'; si++) {
-        const char *sp = search_region;
-        while ((sp = strstr(sp, "\"#text\":")) != NULL) {
-            // Extract this URL candidate
-            char candidate_url[LASTFM_MAX_IMG_URL_LEN];
-            if (!json_get_string(sp, "#text", candidate_url, sizeof(candidate_url))) {
-                sp++;
-                continue;
-            }
-            // Look for the "size" field nearby (within next 64 bytes)
-            char size_val[32] = {0};
-            json_get_string(sp + 8, "size", size_val, sizeof(size_val));
-            if (strcmp(size_val, sizes[si]) == 0 && strlen(candidate_url) > 4) {
-                strncpy(s_img_url, candidate_url, LASTFM_MAX_IMG_URL_LEN - 1);
-                s_img_url[LASTFM_MAX_IMG_URL_LEN - 1] = '\0';
-                break;
-            }
-            sp++;
-        }
-    }
+    // Look for the album block first (avoid picking up artist/track-level images)
+   {
+       const char *sp = search_region;
+       char best_large_url[LASTFM_MAX_IMG_URL_LEN];
+       char candidate_url[LASTFM_MAX_IMG_URL_LEN];
+       char size_val[32];
+       const char *end_of_album;
+
+       best_large_url[0] = '\0';
+
+       /* Limit search to the album block if we found one */
+       end_of_album = NULL;
+       if (album_start) {
+           /* Find the closing brace of the "album":{...} object */
+           int depth = 0;
+           const char *q = album_start + strlen("\"album\":");
+           while (*q) {
+               if      (*q == '{') depth++;
+               else if (*q == '}') { depth--; if (depth == 0) { end_of_album = q + 1; break; } }
+               q++;
+           }
+       }
+
+       while ((sp = strstr(sp, "\"#text\":")) != NULL) {
+           /* Stop if we've passed the end of the album block */
+           if (end_of_album && sp >= end_of_album) break;
+
+           candidate_url[0] = '\0';
+           if (!json_get_string(sp, "#text", candidate_url, sizeof(candidate_url))) {
+               sp++;
+               continue;
+           }
+
+           size_val[0] = '\0';
+           json_get_string(sp + 8, "size", size_val, sizeof(size_val));
+
+           if (strlen(candidate_url) > 4) {
+               // prefer "large" over "extralarge", better for the small OLED
+               if (strcmp(size_val, "large") == 0) {
+                   /* Best option — take it immediately */
+                   strncpy(s_img_url, candidate_url, LASTFM_MAX_IMG_URL_LEN - 1);
+                   s_img_url[LASTFM_MAX_IMG_URL_LEN - 1] = '\0';
+                   break;
+               } else if (strcmp(size_val, "extralarge") == 0 && best_large_url[0] == '\0') {
+                   strncpy(best_large_url, candidate_url, LASTFM_MAX_IMG_URL_LEN - 1);
+                   best_large_url[LASTFM_MAX_IMG_URL_LEN - 1] = '\0';
+               }
+           }
+           sp++;
+       }
+
+       /* Fallback to extralarge if no "large" was found */
+       if (s_img_url[0] == '\0' && best_large_url[0] != '\0') {
+           strncpy(s_img_url, best_large_url, LASTFM_MAX_IMG_URL_LEN - 1);
+           s_img_url[LASTFM_MAX_IMG_URL_LEN - 1] = '\0';
+       }
+   }
+
+   // LastFM can cleanly convert PNG's to JPEG, which is a lot better for our lightweight microcontroller
+   //and available libraries!
+   {
+      int url_len = (int)strlen(s_img_url);
+      if (url_len > 4 &&
+          s_img_url[url_len-4] == '.' &&
+          s_img_url[url_len-3] == 'p' &&
+          s_img_url[url_len-2] == 'n' &&
+          s_img_url[url_len-1] == 'g') {
+          s_img_url[url_len-3] = 'j';
+          s_img_url[url_len-2] = 'p';
+          s_img_url[url_len-1] = 'g';
+      }
+
+      /* https:// -> http:// : downgrade to plain HTTP to avoid TLS CA error */
+      if (strncmp(s_img_url, "https://", 8) == 0) {
+          /* Remove the 's' at index 4 by shifting [5..end] one byte left.
+           * turning "https://" (8 chars) into "http://" (7 chars). */
+          memmove(s_img_url + 4, s_img_url + 5,
+                  strlen(s_img_url + 5) + 1);  /* +1 for NUL */
+      }
+   }
 
     UART_PRINT("[LastFM] Album art URL: %s\n\r",
                s_img_url[0] ? s_img_url : "(none)");
@@ -747,8 +802,6 @@ static int query_similar_tracks(const char *artist, const char *track)
 //     - oled_ui_render_album_jpeg(): public entry point that owns the decode
 // ===========================================================================
 
-#ifdef LASTFM_ENABLE_JPEG
-
 // ---------------------------------------------------------------------------
 // 7a  _JpegStream + jpeg_in_cb
 //
@@ -768,16 +821,16 @@ typedef struct {
     int   chunk_len;
 } _JpegStream;
 
-static UINT jpeg_in_cb(JDEC *jd, BYTE *buf, UINT nbytes)
+static size_t jpeg_in_cb(JDEC *jd, uint8_t *buf, size_t nbytes)
 {
     _JpegStream *stream = (_JpegStream *)jd->device;
-    UINT total = 0;
+    size_t total = 0;
 
     while (total < nbytes) {
         // Drain preamble first (bytes co-received with HTTP headers)
         if (stream->preamble_pos < stream->preamble_len) {
-            UINT avail = (UINT)(stream->preamble_len - stream->preamble_pos);
-            UINT copy  = (nbytes - total < avail) ? (nbytes - total) : avail;
+            size_t avail = (size_t)(stream->preamble_len - stream->preamble_pos);
+            size_t copy  = (nbytes - total < avail) ? (nbytes - total) : avail;
             if (buf) memcpy(buf + total,
                             stream->preamble + stream->preamble_pos, copy);
             stream->preamble_pos += (int)copy;
@@ -787,8 +840,8 @@ static UINT jpeg_in_cb(JDEC *jd, BYTE *buf, UINT nbytes)
 
         // Drain the current socket chunk
         if (stream->chunk_pos < stream->chunk_len) {
-            UINT avail = (UINT)(stream->chunk_len - stream->chunk_pos);
-            UINT copy  = (nbytes - total < avail) ? (nbytes - total) : avail;
+            size_t avail = (size_t)(stream->chunk_len - stream->chunk_pos);
+            size_t copy  = (nbytes - total < avail) ? (nbytes - total) : avail;
             if (buf) memcpy(buf + total,
                             stream->chunk + stream->chunk_pos, copy);
             stream->chunk_pos += (int)copy;
@@ -853,12 +906,6 @@ static int parse_url(const char *url,
 // ---------------------------------------------------------------------------
 int LastFM_RenderAlbumCover(void)
 {
-#ifndef LASTFM_ENABLE_JPEG
-    UART_PRINT("[LastFM] JPEG support not compiled "
-               "(define LASTFM_ENABLE_JPEG)\n\r");
-    s_last_error = LASTFM_ERR_NO_JPEG_SUPPORT;
-    return LASTFM_ERR_NO_JPEG_SUPPORT;
-#else
     if (!s_init) return LASTFM_ERR_NOT_INIT;
 
     if (s_img_url[0] == '\0') {
@@ -910,8 +957,7 @@ int LastFM_RenderAlbumCover(void)
 
         SlSockSecureMask mask;
         mask.secureMask = SL_SEC_MASK_TLS_RSA_WITH_AES_256_CBC_SHA256
-                        | SL_SEC_MASK_TLS_RSA_WITH_AES_128_CBC_SHA256
-                        | SL_SEC_MASK_TLS_RSA_WITH_RC4_128_SHA;
+                        | SL_SEC_MASK_TLS_RSA_WITH_AES_128_CBC_SHA256;
         sl_SetSockOpt(sock, SL_SOL_SOCKET, SL_SO_SECURE_MASK,
                       &mask, sizeof(mask));
     }
@@ -950,33 +996,52 @@ int LastFM_RenderAlbumCover(void)
         return LASTFM_ERR_SEND;
     }
 
-    // --- Consume HTTP headers byte-by-byte ---
-    // Re-use s_http_buf as the staging area; any bytes after the header
-    // separator (\r\n\r\n) are the first JPEG bytes — move them to front.
-    int  pos = 0;
-    bool header_done = false;
 
-    while (pos < LASTFM_HTTP_BUF_SIZE - 1) {
-        int n = sl_Recv(sock, s_http_buf + pos, 1, 0);
-        if (n <= 0) break;
-        pos++;
-        if (pos >= 4 &&
-            s_http_buf[pos-4] == '\r' && s_http_buf[pos-3] == '\n' &&
-            s_http_buf[pos-2] == '\r' && s_http_buf[pos-1] == '\n') {
-            header_done = true;
+    /* Read in JPEG; read headers in bulk chunks of 256 bytes for efficiency */
+    int  hdr_total   = 0;
+    int  hdr_end     = -1;
+    int  scan_from   = 0;
+    int  i           = 0;
+    int  status      = 0;
+    int  preamble_len = 0;
+    int  recv_n      = 0;
+    _JpegStream stream;
+    int  result      = 0;
+
+    UART_PRINT("[LastFM] Reading image headers...\n\r");
+
+    /* Read headers in 256-byte chunks until \r\n\r\n is found */
+    while (hdr_total < LASTFM_HTTP_BUF_SIZE - 1 && hdr_end < 0) {
+        int space = LASTFM_HTTP_BUF_SIZE - 1 - hdr_total;
+        int chunk = (space > 256) ? 256 : space;
+        recv_n = sl_Recv(sock, s_http_buf + hdr_total, chunk, 0);
+        if (recv_n <= 0) {
+            UART_PRINT("[LastFM] sl_Recv error %d while reading headers\n\r", recv_n);
             break;
+        }
+        hdr_total += recv_n;
+
+        /* Scan newly received bytes for \r\n\r\n */
+        scan_from = (hdr_total - recv_n - 3 > 0) ? (hdr_total - recv_n - 3) : 0;
+        for (i = scan_from; i <= hdr_total - 4; i++) {
+            if (s_http_buf[i]   == '\r' && s_http_buf[i+1] == '\n' &&
+                s_http_buf[i+2] == '\r' && s_http_buf[i+3] == '\n') {
+                hdr_end = i + 4;
+                break;
+            }
         }
     }
 
-    if (!header_done) {
-        UART_PRINT("[LastFM] Image HTTP header not found\n\r");
+    UART_PRINT("[LastFM] Header read: %d bytes, separator %s\n\r",
+               hdr_total, hdr_end >= 0 ? "found" : "NOT FOUND");
+
+    if (hdr_end < 0) {
         sl_Close(sock);
         s_last_error = LASTFM_ERR_HTTP;
         return LASTFM_ERR_HTTP;
     }
 
-    // Check HTTP status
-    int status = 0;
+    /* Check HTTP status from the first response line */
     if (strncmp(s_http_buf, "HTTP/", 5) == 0) {
         const char *sp = strchr(s_http_buf, ' ');
         if (sp) status = atoi(sp + 1);
@@ -988,17 +1053,38 @@ int LastFM_RenderAlbumCover(void)
         return LASTFM_ERR_HTTP;
     }
 
-    // Read the first JPEG chunk into s_http_buf (headers already discarded)
-    int preamble_len = 0;
-    int space = LASTFM_HTTP_BUF_SIZE - 1;
-    if (space > 0) {
-        int n = sl_Recv(sock, s_http_buf, space, 0);
-        if (n > 0) preamble_len = n;
+    /* Any bytes received after \r\n\r\n are already the JPEG body.
+       memmove them to the front of s_http_buf as the preamble. */
+    preamble_len = hdr_total - hdr_end;
+    if (preamble_len > 0) {
+        memmove(s_http_buf, s_http_buf + hdr_end, preamble_len);
     }
     s_http_buf[preamble_len] = '\0';
+    UART_PRINT("[LastFM] JPEG preamble: %d bytes co-received\n\r", preamble_len);
 
-    // --- Build stream context and hand off to oled_ui for decode+draw ---
-    _JpegStream stream;
+    /* If nothing came after the headers, do one bulk read to prime the pump */
+    if (preamble_len == 0) {
+        recv_n = sl_Recv(sock, s_http_buf, LASTFM_HTTP_BUF_SIZE - 1, 0);
+        if (recv_n > 0) {
+            preamble_len = recv_n;
+            s_http_buf[preamble_len] = '\0';
+            UART_PRINT("[LastFM] JPEG preamble (bulk): %d bytes\n\r", preamble_len);
+        } else {
+            UART_PRINT("[LastFM] Initial JPEG recv returned %d\n\r", recv_n);
+        }
+    }
+
+    /* Sanity-check: first two bytes must be 0xFF 0xD8 (JPEG SOI marker).
+       If we see anything else the CDN served a PNG or an error page. */
+    if (preamble_len >= 2) {
+        unsigned char b0 = (unsigned char)s_http_buf[0];
+        unsigned char b1 = (unsigned char)s_http_buf[1];
+        UART_PRINT("[LastFM] SOI: 0x%02X 0x%02X (%s)\n\r",
+                   b0, b1,
+                   (b0 == 0xFF && b1 == 0xD8) ? "VALID JPEG" : "BAD - not a JPEG");
+    }
+
+    /* Hand off to oled_ui for decode + draw */
     stream.socket       = sock;
     stream.preamble     = s_http_buf;
     stream.preamble_len = preamble_len;
@@ -1006,19 +1092,14 @@ int LastFM_RenderAlbumCover(void)
     stream.chunk_pos    = 0;
     stream.chunk_len    = 0;
 
-    // oled_ui_render_album_jpeg owns: work buffer, jpeg_out_cb,
-    // compute_scale, jd_prepare, jd_decomp, and all drawPixel calls.
-    int result = oled_ui_render_album_jpeg(
-                     (OledJpegInFn)jpeg_in_cb, &stream);
+    UART_PRINT("[LastFM] Handing off to TJpgDec...\n\r");
+
+    result = oled_ui_render_album_jpeg((OledJpegInFn)jpeg_in_cb, &stream);
 
     sl_Close(sock);
-
     s_last_error = result;
     return result;
-#endif /* LASTFM_ENABLE_JPEG */
 }
-
-#endif /* LASTFM_ENABLE_JPEG — closes the outer guard opened in §7a */
 
 // ===========================================================================
 // 8  Public API implementations
@@ -1078,11 +1159,9 @@ int LastFM_QueryAndUpdateViews(const char *artist, const char *track)
         // Only set when JPEG support is compiled in — without it, the view
         // keeps available=false and shows the "unavailable" placeholder,
         // which is correct since LastFM_RenderAlbumCover() will be a no-op.
-#ifdef LASTFM_ENABLE_JPEG
         if (s_img_url[0] != '\0') {
             oled_ui_update_album_cover(true);
         }
-#endif
         UART_PRINT("[LastFM] Corrected: \"%s\" - \"%s\"\n\r",
                    corrected_artist, corrected_track);
         // Update the Radio view with the corrected artist/track names

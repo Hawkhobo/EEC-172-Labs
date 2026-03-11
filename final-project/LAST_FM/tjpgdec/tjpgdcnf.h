@@ -30,10 +30,10 @@
 #define JD_USE_SCALE    1
 
 /*---------------------------------------------------------------------------
- * JD_TBLCLIP — Use a 256-byte clipping table instead of conditional jumps.
- * Saves ~20 CPU cycles per component per pixel; minor but free on CC3200.
+ * JD_TBLCLIP — don't use a 256-byte clipping table instead of conditional jumps.
+ * Saves ~20 CPU cycles per component per pixel; just above CC3200's memory budget :(
  *--------------------------------------------------------------------------*/
-#define JD_TBLCLIP      1
+#define JD_TBLCLIP      0
 
 /*---------------------------------------------------------------------------
  * JD_FASTDECODE — Controls the speed/RAM trade-off for Huffman decoding.

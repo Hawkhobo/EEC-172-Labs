@@ -12,6 +12,7 @@
 #include "../adafruit_oled_lib/Adafruit_SSD1351.h"
 
 #include "oled_ui.h"
+#include "../LAST_FM/lastfm.h"
 
 // ===========================================================================
 // JPEG album-cover support  (compiled in only when LASTFM_ENABLE_JPEG is set)
@@ -29,8 +30,32 @@
 //   - jpeg_in_cb: TJpgDec input callback that streams bytes from the socket
 // ===========================================================================
 
-#ifdef LASTFM_ENABLE_JPEG
-#include "../LASTFM/tjpgdec/tjpgdec.h"
+#include "../LAST_FM/tjpgdec/tjpgd.h"
+
+// ===========================================================================
+// Layout constants
+// ===========================================================================
+
+#define SCREEN_W          128
+#define SCREEN_H          128
+
+// Banner (top navigation bar)
+#define BANNER_H           12   // pixels tall (includes 1-px bottom divider)
+#define BANNER_ITEM_W      18   // px per item  (7 × 18 = 126; 1-px left margin)
+#define BANNER_X_MARGIN     1   // left margin before first item
+
+// Content area (below the banner)
+#define CONTENT_Y        BANNER_H
+#define CONTENT_H        (SCREEN_H - BANNER_H)
+
+// Font geometry (Adafruit 5×7 glcdfont at size-1)
+#define CHAR_W             6    // 5px glyph + 1px gap
+#define CHAR_H             8
+#define LINE_H             9    // CHAR_H + 1px row gap
+#define CHARS_PER_LINE    21    // floor(128 / 6)
+
+// how many text lines fit in the content area
+#define CONTENT_MAX_LINES  (CONTENT_H / LINE_H)
 
 // RGB888 (3 bytes) -> RGB565 (16-bit) for the SSD1351
 #define RGB888_TO_565(r, g, b) \
@@ -95,16 +120,17 @@ static void compute_scale(int src_w, int src_h)
 // Converts RGB888 -> RGB565 and maps source pixels onto the OLED content
 // area using integer nearest-neighbour scaling.
 // ---------------------------------------------------------------------------
-static UINT jpeg_out_cb(JDEC *jd, void *bitmap, JRECT *rect)
+static int jpeg_out_cb(JDEC *jd, void *bitmap, JRECT *rect)
 {
-    BYTE *rgb = (BYTE *)bitmap;
+    uint8_t *rgb = (uint8_t *)bitmap;
     int sy, sx;
+    uint8_t r, g, b;
 
     for (sy = rect->top; sy <= rect->bottom; sy++) {
         for (sx = rect->left; sx <= rect->right; sx++) {
-            BYTE r = *rgb++;
-            BYTE g = *rgb++;
-            BYTE b = *rgb++;
+            r = *rgb++;
+            g = *rgb++;
+            b = *rgb++;
 
             // Nearest-neighbour map from source pixel to OLED pixel
             int dx = s_scale.dst_x + (sx * s_scale.dst_w) / s_scale.src_w;
@@ -120,28 +146,30 @@ static UINT jpeg_out_cb(JDEC *jd, void *bitmap, JRECT *rect)
     return 1;  // JDR_OK — continue decoding
 }
 
-/ ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // oled_ui_render_album_jpeg — public implementation
 //
 // See oled_ui.h for the full contract.
 // ---------------------------------------------------------------------------
 int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
 {
+    JDEC         jd;
+    JRESULT      jres;
+    uint8_t      scale;
+    unsigned int dec_w;
+    unsigned int dec_h;
+
     // Clear the content area to black first (letterbox margins stay black)
     fillRect(0u, (unsigned int)CONTENT_Y,
              (unsigned int)SCREEN_W, (unsigned int)CONTENT_H, 0x0000u);
 
-    // jd_prepare wants UINT(*)(JDEC*, BYTE*, UINT).
-    // Our OledJpegInFn uses plain C types to avoid exposing tjpgdec.h in
-    // oled_ui.h; the underlying layout is identical, so the cast is safe.
-    JDEC jd;
-    JRESULT jres = jd_prepare(&jd,
-                               (UINT(*)(JDEC *, BYTE *, UINT))in_fn,
-                               s_jpgdec_work, _JPGDEC_WORK_SZ,
-                               device_ctx);
+    jres = jd_prepare(&jd,
+                      (size_t(*)(JDEC *, uint8_t *, size_t))in_fn,
+                      s_jpgdec_work, _JPGDEC_WORK_SZ,
+                      device_ctx);
     if (jres != JDR_OK) {
         UART_PRINT("[OLED] jd_prepare failed (%d)\n\r", (int)jres);
-        return -8;  // LASTFM_ERR_JPEG — avoid including lastfm.h here
+        return -8;  // LASTFM_ERR_JPEG, avoid including lastfm.h here
     }
 
     UART_PRINT("[OLED] JPEG %u x %u\n\r", jd.width, jd.height);
@@ -151,13 +179,12 @@ int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
     //   scale=1 -> 1/2 in each dimension  (use for images >= 128 px wide)
     //   scale=2 -> 1/4                    (use for very large images >= 512 px)
     // After TJpgDec scaling, compute_scale() handles the final NN step.
-    BYTE scale = 0;
-    if (jd.width >= 128) scale = 1;
+    scale = 0;
     if (jd.width >= 512) scale = 2;
 
     // Decoded dimensions after TJpgDec halving
-    unsigned int dec_w = jd.width  >> scale;
-    unsigned int dec_h = jd.height >> scale;
+    dec_w = jd.width  >> scale;
+    dec_h = jd.height >> scale;
     compute_scale((int)dec_w, (int)dec_h);
 
     jres = jd_decomp(&jd, jpeg_out_cb, scale);
@@ -172,34 +199,6 @@ int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
                s_scale.dst_x, s_scale.dst_y);
     return 0;  // LASTFM_OK
 }
-
-#endif /* LASTFM_ENABLE_JPEG */
-
-
-// ===========================================================================
-// Layout constants
-// ===========================================================================
-
-#define SCREEN_W          128
-#define SCREEN_H          128
-
-// Banner (top navigation bar)
-#define BANNER_H           12   // pixels tall (includes 1-px bottom divider)
-#define BANNER_ITEM_W      18   // px per item  (7 × 18 = 126; 1-px left margin)
-#define BANNER_X_MARGIN     1   // left margin before first item
-
-// Content area (below the banner)
-#define CONTENT_Y        BANNER_H
-#define CONTENT_H        (SCREEN_H - BANNER_H)
-
-// Font geometry (Adafruit 5×7 glcdfont at size-1)
-#define CHAR_W             6    // 5px glyph + 1px gap
-#define CHAR_H             8
-#define LINE_H             9    // CHAR_H + 1px row gap
-#define CHARS_PER_LINE    21    // floor(128 / 6)
-
-// how many text lines fit in the content area
-#define CONTENT_MAX_LINES  (CONTENT_H / LINE_H)
 
 // ===========================================================================
 // Color aliases
