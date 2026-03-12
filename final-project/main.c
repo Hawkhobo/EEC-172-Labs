@@ -81,6 +81,12 @@
 #include "LAST_FM/lastfm.h"
 #include "TSOP311_IR_RECEIVER/tsop311_ir_receiver.h"
 
+#define UI_DEBUG
+
+#ifdef UI_DEBUG
+#include "DEMO/demo_code.h"
+#endif
+
 // Last.fm API key -- register at https://www.last.fm/api/account/create
 #define LASTFM_API_KEY        "21c2eee2edef4c433f750fedbb43fa94"
 
@@ -184,26 +190,40 @@ static void format_station(float freq, char *dst)
 // Returns the TEA5767 result code.
 static void query_lastfm(void)
 {
-    // -----------------------------------------------------------------
-    // TODO: replace these with live RDS-decoded artist / track strings
-    //       once your RDS implementation is complete.
-    // -----------------------------------------------------------------
     int         calls;
-    const char *artist = "Tame Impala";
-    const char *track  = "Let It Happen";
+    const char *artist;
+    const char *track;
 
-    UART_PRINT("[LastFM] Querying: '%s' by '%s'\n\r", track, artist);
-    calls = LastFM_QueryAndUpdateViews(artist, track);
-    UART_PRINT("[LastFM] %d API call(s) succeeded\n\r", calls);
+    #ifdef UI_DEBUG
+        Demo_GetNextMetadata(&artist, &track);
+        UART_PRINT("[UI_DEBUG][LastFM] Querying: '%s' by '%s'\n\r", track, artist);
+        calls = LastFM_QueryAndUpdateViews(artist, track);
+        UART_PRINT("[UI_DEBUG][LastFM] %d API call(s) succeeded\n\r", calls);
 
-    // Flag album cover available/unavailable for the ALB placeholder view
-    oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
+        oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
 
-    // If we made a call, we need to refresh the OLED
-    if (calls > 0) {
         oled_ui_set_view(OLED_VIEW_RADIO);
         oled_ui_render();
-    }
+    // Production environment
+    #else
+        // -----------------------------------------------------------------
+        // TODO: replace with live RDS-decoded artist / track strings
+        //       once RDS implementation is complete. (Bah Humbug)
+        // -----------------------------------------------------------------
+        artist = "Tame Impala";
+        track  = "Let It Happen";
+
+        UART_PRINT("[LastFM] Querying: '%s' by '%s'\n\r", track, artist);
+        calls = LastFM_QueryAndUpdateViews(artist, track);
+        UART_PRINT("[LastFM] %d API call(s) succeeded\n\r", calls);
+
+        oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
+
+        if (calls > 0) {
+            oled_ui_set_view(OLED_VIEW_RADIO);
+            oled_ui_render();
+        }
+    #endif
 }
 
 // Tune to freq_mhz, update globals, refresh OLED radio view.
@@ -229,11 +249,22 @@ static int tune_and_update(float freq_mhz)
 
         oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, sig);
     } else {
-        format_station(g_current_freq, station_str);
-        UART_PRINT("Tune failed (rc=%d) for %.1f\n\r", rc, (double)freq_mhz);
-        sig = TEA5767_GetSignalStrength();
-        if (sig < 0) sig = 0;
-        oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, sig);
+        #ifdef UI_DEBUG
+                // Debug mode: ignore tune failure, advance freq and demo playlist anyway
+                g_last_freq    = g_current_freq;
+                g_current_freq = freq_mhz;
+                format_station(g_current_freq, station_str);
+                UART_PRINT("[UI_DEBUG] Tune failed (rc=%d), advancing demo track anyway\n\r", rc);
+                sig = 0;
+                query_lastfm();
+                oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, sig);
+        #else
+                format_station(g_current_freq, station_str);
+                UART_PRINT("Tune failed (rc=%d) for %.1f\n\r", rc, (double)freq_mhz);
+                sig = TEA5767_GetSignalStrength();
+                if (sig < 0) sig = 0;
+                oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, sig);
+        #endif
     }
 
     oled_ui_set_view(OLED_VIEW_RADIO);
@@ -353,7 +384,7 @@ int main(void) {
                           oled_ui_render();
                       }
                   } else {
-                      // Nothing typed - original behaviur: jump to Radio view
+                      // Nothing typed - original behavior: jump to Radio view
                       oled_ui_set_view(OLED_VIEW_RADIO);
                       oled_ui_render();
                   }
