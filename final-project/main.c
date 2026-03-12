@@ -230,10 +230,26 @@ static void query_lastfm(void)
 // Returns the TEA5767 result code.
 static int tune_and_update(float freq_mhz)
 {
-    int  rc = TEA5767_TuneFrequency(freq_mhz);
+
+    int  rc;
     int  sig;
     char station_str[UI_MAX_STATION_LEN];
 
+    // Determine if input is out of US frequency range, reprompt if so
+    if (freq_mhz < TEA5767_BAND_MIN_MHZ || freq_mhz > TEA5767_BAND_MAX_MHZ) {
+        UART_PRINT("Out-of-range: %.1f MHz (valid: %.1f-%.1f)\n\r",
+                   (double)freq_mhz,
+                   (double)TEA5767_BAND_MIN_MHZ,
+                   (double)TEA5767_BAND_MAX_MHZ);
+        oled_ui_flash_error_banner();
+        format_station(g_current_freq, station_str);
+        oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);
+        oled_ui_set_view(OLED_VIEW_RADIO);
+        oled_ui_render();
+        return TEA5767_ERR_FREQ;
+    }
+
+    rc = TEA5767_TuneFrequency(freq_mhz);
     if (rc == TEA5767_OK || rc == TEA5767_ERR_NO_SIGNAL) {
         g_last_freq    = g_current_freq;
         g_current_freq = freq_mhz;
@@ -377,6 +393,7 @@ int main(void) {
                       } else {
                           // Unparseable string (e.g. just ".") - clear and notify
                           UART_PRINT("Invalid freq entry - discarded\n\r");
+                          oled_ui_flash_error_banner();
                           char station_str[UI_MAX_STATION_LEN];
                           format_station(g_current_freq, station_str);
                           oled_ui_update_radio(station_str, NULL, NULL, NULL, 0, 0);

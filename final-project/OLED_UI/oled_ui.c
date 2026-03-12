@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "common.h"
+#include "rom_map.h"
+#include "utils.h"
+
 
 // Adafruit driver layer
 #include "../adafruit_oled_lib/Adafruit_GFX.h"
@@ -62,6 +65,9 @@
 // allow for snappier OLED UI
 #define SCROLL_STEP    3
 
+// Flash delay counts
+#define FLASH_DELAY_COUNTS 2666666UL
+
 // RGB888 (3 bytes) -> RGB565 (16-bit) for the SSD1351
 #define RGB888_TO_565(r, g, b) \
     ((unsigned int)( (((unsigned int)(r) & 0xF8u) << 8) | \
@@ -81,22 +87,24 @@ static _ScaleParams s_scale;
 // ===========================================================================
 // Color aliases
 // ===========================================================================
-#define BLACK     0x0000u
-#define WHITE     0xFFFFu
-#define CYAN      0x07FFu
-#define YELLOW    0xFFE0u
-#define GREEN     0x07E0u
-#define BLUE      0x001Fu
-#define RED       0xF800u
-#define MAGENTA   0xF81Fu
-#define GREY      0x8410u
-#define DARK_GREY 0x39E7u
+#define BLACK       0x0000u
+#define WHITE       0xFFFFu
+#define CYAN        0x07FFu
+#define YELLOW      0xFFE0u
+#define GREEN       0x07E0u
+#define DARK_GREEN  0x03E0u
+#define BLUE        0x001Fu
+#define RED         0xF800u
+#define MAGENTA     0xF81F
+#define GREY        0x8410u
+#define DARK_GREY   0x39E7u
 
 // UI colour scheme
 #define COL_BANNER_BG       BLACK
 #define COL_BANNER_ITEM     WHITE
 #define COL_BANNER_ACTIVE   CYAN
 #define COL_BANNER_ACT_TXT  BLACK
+#define COL_BANNER_DIVIDER  YELLOW
 #define COL_DIVIDER         WHITE
 #define COL_LABEL           YELLOW
 #define COL_VALUE           WHITE
@@ -490,6 +498,14 @@ static void render_banner(void)
 
     for (i = 0; i < OLED_VIEW_COUNT; i++) {
         int ix = BANNER_X_MARGIN + i * BANNER_ITEM_W;
+
+        // If it's not the first item (i=0), draw a separator to its left
+        if (i > 0) {
+            drawFastVLine(ix - 1, 0, BANNER_H - 1, COL_BANNER_DIVIDER);
+            drawFastVLine(ix, 0, BANNER_H - 1, COL_BANNER_DIVIDER);
+            drawFastVLine(ix + 1, 0, BANNER_H - 1, COL_BANNER_DIVIDER);
+        }
+        // -------------------------
 
         if (i == (int)g_view) {
             // Highlight the active tab
@@ -954,6 +970,22 @@ void oled_ui_update_lyrics(bool available, const char *lyrics)
         g_lyrics.text[UI_MAX_LYRICS_LEN - 1] = '\0';
     } else {
         g_lyrics.text[0] = '\0';
+    }
+}
+
+void oled_ui_flash_error_banner(void)
+{
+    int i;
+    int y = CONTENT_Y + 1;
+
+    for (i = 0; i < 3; i++) {
+        fillRect(0u, (unsigned int)y,
+                 (unsigned int)SCREEN_W, (unsigned int)LINE_H, RED);
+        MAP_UtilsDelay(FLASH_DELAY_COUNTS);
+
+        fillRect(0u, (unsigned int)y,
+                 (unsigned int)SCREEN_W, (unsigned int)LINE_H, BLACK);
+        MAP_UtilsDelay(FLASH_DELAY_COUNTS);
     }
 }
 
