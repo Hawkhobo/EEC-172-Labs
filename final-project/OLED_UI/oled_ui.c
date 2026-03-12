@@ -396,6 +396,26 @@ static ListViewData   g_genre_tags;
 static ListViewData   g_similar_tracks;
 static LyricsData     g_lyrics;
 
+// ---------------------------------------------------------------------------
+// Lyric sync index
+//
+// Built by oled_ui_update_lyrics() in the same pass as timestamp stripping.
+// Each entry records the LRC timestamp and the corresponding byte offset
+// in g_lyrics.text where that lyric line's text begins.
+//
+// oled_ui_tick() binary-searches this array to find the active line and
+// maps its dst_offset to a wrapped display-line number for auto-scroll.
+// ---------------------------------------------------------------------------
+typedef struct {
+    uint32_t time_ms;     /* LRC timestamp converted to milliseconds       */
+    uint16_t dst_offset;  /* byte offset into g_lyrics.text for this line  */
+} LyricLine;
+
+static LyricLine g_lyric_index[LYRICS_MAX_LINES];
+static int       g_lyric_line_count  = 0;   /* entries populated           */
+static int       g_last_lyric_idx    = -1;  /* line rendered on last tick  */
+static int       g_last_progress_pct = -1;  /* pct rendered on last tick   */
+
 // 3-char banner abbreviations (corresponds to OledViewId)
 static const char *k_banner_labels[OLED_VIEW_COUNT] = {
     "RAD",
@@ -828,6 +848,10 @@ void oled_ui_init(void)
     g_album.available   = false;
     g_lyrics.available  = false;
 
+    g_lyric_line_count  = 0;
+    g_last_lyric_idx    = -1;
+    g_last_progress_pct = -1;
+
     oled_ui_render();
 }
 
@@ -989,6 +1013,12 @@ void oled_ui_update_similar_tracks(const char tracks[][UI_MAX_LIST_ITEM_LEN],
 
 void oled_ui_update_lyrics(bool available, const char *lyrics)
 {
+    /* Reset sync state for the new track regardless of availability */
+    g_lyric_line_count  = 0;
+    g_last_lyric_idx    = -1;
+    g_last_progress_pct = -1;
+    g_scroll[OLED_VIEW_LYRICS] = 0;
+
     g_lyrics.available = available;
 
     if (!available || !lyrics) {
@@ -996,39 +1026,127 @@ void oled_ui_update_lyrics(bool available, const char *lyrics)
         return;
     }
 
-    /* Strip LRC timestamps of the form [MM:SS.xx] from synced lyrics.
-     * Input:  "[00:27.62]It's always around me\n[00:33.34]Not nearly...\n"
-     * Output: "It's always around me\nNot nearly...\n"
+    /* Single-pass: strip LRC timestamps into g_lyrics.text and simultaneously
+     * build the lyric sync index (g_lyric_index[]).
      *
-     * A timestamp is exactly 10 chars: '[' DD ':' DD '.' DD ']'
-     * Any '[' that does not match this pattern is kept verbatim so that
-     * lyrics containing bracketed text (e.g. "[yeah]") render correctly.
-     * A single space immediately after a closing ']' is also consumed.
-     * Output is clamped to UI_MAX_LYRICS_LEN - 1 characters. */
+     * LRC timestamp format: [MM:SS.xx]  -- exactly 10 characters.
+     *   src[0] = '['
+     *   src[1..2] = minutes (two decimal digits)
+     *   src[3] = ':'
+     *   src[4..5] = seconds (two decimal digits)
+     *   src[6] = '.'
+     *   src[7..8] = hundredths (two decimal digits)
+     *   src[9] = ']'
+     *
+     * Every matching timestamp is skipped from the output text, and an index
+     * entry is recorded with the timestamp value and the output offset where
+     * the following lyric text begins.  A single optional space after ']' is
+     * also consumed.  Any '[' that does not match the exact pattern is kept
+     * verbatim (handles "[yeah]" style bracketed text in lyrics). */
     {
         const char *src = lyrics;
         char       *dst = g_lyrics.text;
         char       *end = dst + (UI_MAX_LYRICS_LEN - 1);
 
         while (*src && dst < end) {
-            if (src[0] == '['        &&
+            if (src[0] == '['             &&
                 src[1] >= '0' && src[1] <= '9' &&
                 src[2] >= '0' && src[2] <= '9' &&
-                src[3] == ':'        &&
+                src[3] == ':'             &&
                 src[4] >= '0' && src[4] <= '9' &&
                 src[5] >= '0' && src[5] <= '9' &&
-                src[6] == '.'        &&
+                src[6] == '.'             &&
                 src[7] >= '0' && src[7] <= '9' &&
                 src[8] >= '0' && src[8] <= '9' &&
                 src[9] == ']') {
-                src += 10;
-                if (*src == ' ') src++;
+
+                /* Parse timestamp -> milliseconds */
+                uint32_t mm = (uint32_t)(src[1]-'0') * 10u
+                            + (uint32_t)(src[2]-'0');
+                uint32_t ss = (uint32_t)(src[4]-'0') * 10u
+                            + (uint32_t)(src[5]-'0');
+                uint32_t xx = (uint32_t)(src[7]-'0') * 10u
+                            + (uint32_t)(src[8]-'0');
+                uint32_t ts_ms = mm * 60000u + ss * 1000u + xx * 10u;
+
+                /* Record index entry */
+                if (g_lyric_line_count < LYRICS_MAX_LINES) {
+                    g_lyric_index[g_lyric_line_count].time_ms   = ts_ms;
+                    g_lyric_index[g_lyric_line_count].dst_offset =
+                        (uint16_t)(dst - g_lyrics.text);
+                    g_lyric_line_count++;
+                }
+
+                src += 10;                  /* skip the 10-char timestamp   */
+                if (*src == ' ') src++;     /* consume optional space       */
             } else {
                 *dst++ = *src++;
             }
         }
         *dst = '\0';
     }
+}
+
+void oled_ui_tick(uint32_t elapsed_ms, uint32_t duration_ms)
+{
+    int  new_pct;
+    int  new_idx;
+    int  i;
+    bool progress_changed;
+    bool lyric_changed;
+
+    if (duration_ms == 0u) return;
+
+    /* --- New progress percentage (0-100, clamped) --- */
+    new_pct = (int)((elapsed_ms * 100u) / duration_ms);
+    if (new_pct > 100) new_pct = 100;
+
+    /* --- Current lyric line ---
+     * g_lyric_index is sorted by time_ms (LRC files are always in order).
+     * Walk forward and keep the last entry whose time_ms <= elapsed_ms. */
+    new_idx = -1;
+    for (i = 0; i < g_lyric_line_count; i++) {
+        if (g_lyric_index[i].time_ms <= elapsed_ms)
+            new_idx = i;
+        else
+            break;
+    }
+
+    progress_changed = (new_pct != g_last_progress_pct);
+    lyric_changed    = (new_idx != g_last_lyric_idx);
+
+    if (!progress_changed && !lyric_changed) return;
+
+    /* Commit */
+    g_radio.progress_pct = new_pct;
+    g_last_progress_pct  = new_pct;
+    g_last_lyric_idx     = new_idx;
+
+    /* --- Redraw the active view if it changed --- */
+    if (g_view == OLED_VIEW_LYRICS && lyric_changed && new_idx >= 0) {
+        /* Map the lyric's dst_offset to a wrapped display-line number.
+         * Scan g_lyrics.text from the start, counting ui_line_fit() steps,
+         * until we reach the byte offset recorded for this index entry.
+         * Most lyric lines are short (< CHARS_PER_LINE) so the scan is fast. */
+        int          display_line = 0;
+        int          target       = (int)g_lyric_index[new_idx].dst_offset;
+        const char  *ptr          = g_lyrics.text;
+        while (*ptr && (int)(ptr - g_lyrics.text) < target) {
+            int advance;
+            ui_line_fit(ptr, CHARS_PER_LINE, &advance);
+            display_line++;
+            ptr += advance;
+        }
+        /* Scroll so the current line is near the top with one line of context */
+        int scroll = display_line - 1;
+        if (scroll < 0) scroll = 0;
+        g_scroll[OLED_VIEW_LYRICS] = scroll;
+        oled_ui_render();
+    } else if (g_view == OLED_VIEW_RADIO && progress_changed) {
+        oled_ui_render();
+    }
+    /* If the user is on any other view, g_radio.progress_pct is updated
+     * silently; it will appear correctly when they navigate back to RAD. */
 }
 
 void oled_ui_flash_error_banner(void)

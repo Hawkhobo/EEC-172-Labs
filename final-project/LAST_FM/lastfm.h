@@ -153,6 +153,16 @@ int LastFM_RenderAlbumCover(void);
 bool LastFM_AlbumArtAvailable(void);
 
 /**
+ * LastFM_GetTrackDurationMs
+ *
+ * Returns the duration of the most recently queried track in milliseconds,
+ * as reported by the Last.fm track.getInfo response field "duration".
+ * Returns 0 if LastFM_QueryAndUpdateViews() has not been called yet, or if
+ * the response did not include a duration field.
+ */
+int LastFM_GetTrackDurationMs(void);
+
+/**
  * LastFM_GetLastError
  *
  * Returns the LASTFM_ERR_* code from the most recent API call that failed,

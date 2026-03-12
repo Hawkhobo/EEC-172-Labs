@@ -46,10 +46,11 @@
 // 3  Module state
 // ===========================================================================
 
-static bool   s_init            = false;
-static char   s_api_key[48]     = {0};
+static bool   s_init              = false;
+static char   s_api_key[48]       = {0};
 static char   s_img_url[LASTFM_MAX_IMG_URL_LEN] = {0};  // cached art URL
-static int    s_last_error      = LASTFM_OK;
+static int    s_last_error        = LASTFM_OK;
+static int    s_track_duration_ms = 0;  // cached from last track.getInfo call
 
 // Shared HTTP receive buffer reused for every HTTP transaction.
 // All callers are sequential; no concurrency issues.
@@ -534,6 +535,19 @@ static int query_track_info(const char *artist, const char *track,
             const char *inner = artist_obj + strlen("\"artist\":{");
             json_get_string(inner, "name", out_corrected_artist, name_max);
         }
+    }
+
+    // --- Extract track duration ---
+    // Last.fm returns "duration":"243000" (milliseconds as a decimal string).
+    // Reset to 0 first so that a missing field doesn't leave a stale value.
+    {
+        char dur_str[16];
+        dur_str[0] = '\0';
+        s_track_duration_ms = 0;
+        if (json_get_string(body, "duration", dur_str, sizeof(dur_str))) {
+            s_track_duration_ms = atoi(dur_str);
+        }
+        UART_PRINT("[LastFM] Track duration: %d ms\n\r", s_track_duration_ms);
     }
 
     // --- Extract album art URL (prefer "extralarge", fall back to "large") ---
@@ -1290,6 +1304,11 @@ int LastFM_QueryAndUpdateViews(const char *artist, const char *track)
 bool LastFM_AlbumArtAvailable(void)
 {
     return s_init && (s_img_url[0] != '\0');
+}
+
+int LastFM_GetTrackDurationMs(void)
+{
+    return s_track_duration_ms;
 }
 
 int LastFM_GetLastError(void)
