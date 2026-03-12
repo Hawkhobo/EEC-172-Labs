@@ -290,7 +290,7 @@ int main(void) {
    UART_PRINT("LastFM initialised\n\r");
 
    //Set up LRCLIB API
-   LRClib_Init();
+   LRCLib_Init();
 
    query_lastfm();
 

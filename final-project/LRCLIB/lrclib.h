@@ -50,8 +50,9 @@
 #define LRCLIB_PORT              443
 
 // HTTP receive buffer.  LRCLIB JSON responses (plain + synced lyrics combined)
-// are typically 3-8 KB for pop/rock songs.
-#define LRCLIB_HTTP_BUF_SIZE     8192
+// are typically 3-8 KB for pop/rock songs .Reduced from 8192 to match the
+// LastFM buffer size and recover RAM on the CC3200.
+#define LRCLIB_HTTP_BUF_SIZE     6144
 
 // Socket receive timeout (milliseconds)
 #define LRCLIB_RECV_TIMEOUT_MS   8000
@@ -63,7 +64,8 @@
 // Maximum number of timestamped lyric lines stored in RAM.
 // 80 lines covers most songs (7-8 minute pop/rock tracks typically have
 // 40-70 couplets).  At 84 bytes per line this costs about 6.7 KB of RAM.
-#define LRCLIB_MAX_LYRIC_LINES   80
+// Reduced to 20 lines to recover more RAM on the CC3200
+#define LRCLIB_MAX_LYRIC_LINES   20
 
 // Maximum characters per synced lyric line (not including NUL terminator)
 #define LRCLIB_MAX_LINE_LEN      80

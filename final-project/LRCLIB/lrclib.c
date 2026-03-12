@@ -23,10 +23,10 @@
 
 // SimpleLink / network stack
 #include "simplelink.h"
+#include "common.h"
 
 // UART debug
 #include "uart_if.h"
-#include "common.h"
 
 // OLED UI data update API  (to populate lyrics view)
 #include "../OLED_UI/oled_ui.h"
@@ -226,18 +226,15 @@ static int http_get_tls(const char *path)
         return LRCLIB_ERR_SOCKET;
     }
 
-    // Force TLS 1.2; CC3200 does not support TLS 1.3
+    // Force TLS 1.2; CC3200 does not support TLS 1.3.
+    // SL_SO_SECURE_MASK is intentionally NOT set: when no CA file is loaded
+    // and no cipher mask is specified, the SimpleLink stack skips certificate
+    // chain validation, avoiding SL_ERROR_BSD_ESECUNKNOWNROOTCA (-340).
+    // The transport is still encrypted; only chain verification is absent.
     SlSockSecureMethod method;
     method.secureMethod = SL_SO_SEC_METHOD_TLSV1_2;
     sl_SetSockOpt(sock, SL_SOL_SOCKET, SL_SO_SECMETHOD,
                   &method, sizeof(method));
-
-    // Cipher suite: RSA key exchange with AES-256 or AES-128
-    SlSockSecureMask mask;
-    mask.secureMask = SL_SEC_MASK_TLS_RSA_WITH_AES_256_CBC_SHA256
-                    | SL_SEC_MASK_TLS_RSA_WITH_AES_128_CBC_SHA256;
-    sl_SetSockOpt(sock, SL_SOL_SOCKET, SL_SO_SECURE_MASK,
-                  &mask, sizeof(mask));
 
     // Receive timeout
     SlTimeval_t tv;
@@ -492,8 +489,11 @@ int LRCLib_FetchLyrics(const char *artist, const char *track)
 
     // --- Extract and parse synced lyrics ---
     // syncedLyrics is a JSON string whose value is an LRC-format block.
-    // Using a static buffer to avoid a ~3 KB stack allocation on the CC3200.
-    static char s_synced_raw[3072];
+    // 512 bytes is sufficient to hold up to LRCLIB_MAX_LYRIC_LINES (20) lines
+    // at ~20 chars each.  Any lines that overflow this budget are simply not
+    // parsed, which is acceptable since synced scrolling is dormant in the
+    // current demo build.  Using a static buffer avoids a stack allocation.
+    static char s_synced_raw[512];
     s_synced_raw[0] = '\0';
 
     if (json_get_string(body, "syncedLyrics",
@@ -537,29 +537,29 @@ int LRCLib_UpdateSyncedDisplay(unsigned long elapsed_ms)
 
     // --- Build a display window: current line through end of song ---
     // Concatenate lines from new_line onward, separated by '\n', up to
-    // UI_MAX_LYRICS_LEN characters.  The lyrics view will word-wrap and
-    // the caller should call oled_ui_reset_scroll() (done here) so the
-    // current line appears at the top of the view.
-    static char window[UI_MAX_LYRICS_LEN];
+    // UI_MAX_LYRICS_LEN characters.  Reuses s_plain_lyrics as the staging
+    // buffer (it was already pushed to the UI during FetchLyrics and is safe
+    // to overwrite here).  The lyrics view will word-wrap and
+    // oled_ui_reset_scroll() positions the current line at the top.
     int pos       = 0;
-    int remaining = (int)sizeof(window) - 1;
+    int remaining = UI_MAX_LYRICS_LEN - 1;
 
     for (i = new_line; i < s_line_count && remaining > 1; i++) {
         int len = (int)strlen(s_lines[i].text);
         if (len > remaining - 1) len = remaining - 1;
-        memcpy(window + pos, s_lines[i].text, (size_t)len);
+        memcpy(s_plain_lyrics + pos, s_lines[i].text, (size_t)len);
         pos       += len;
         remaining -= len;
         // Add newline separator between lines (not after the last one)
         if (i < s_line_count - 1 && remaining > 1) {
-            window[pos++] = '\n';
+            s_plain_lyrics[pos++] = '\n';
             remaining--;
         }
     }
-    window[pos] = '\0';
+    s_plain_lyrics[pos] = '\0';
 
     // Update the OLED lyrics view and scroll back to the top (= current line)
-    oled_ui_update_lyrics(true, window);
+    oled_ui_update_lyrics(true, s_plain_lyrics);
     oled_ui_reset_scroll();
 
     return 1;  // line changed; caller should call oled_ui_render()
