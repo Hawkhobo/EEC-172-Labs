@@ -188,7 +188,12 @@ void oled_ui_update_similar_tracks(const char tracks[][UI_MAX_LIST_ITEM_LEN],
 // Set available=false (and lyrics=NULL) when lyrics cannot be retrieved.
 void oled_ui_update_lyrics(bool available, const char *lyrics);
 
-
+// Flash the station/entry banner bar red three times in rapid succession.
+// Used to signal invalid input (unrecognizable entry or out-of-range frequency).
+// Blocking call (~600 ms).  Does NOT alter any stored UI data or call
+// oled_ui_render(); the caller is responsible for restoring the display
+// with oled_ui_update_radio() + oled_ui_render() after this returns.
+void oled_ui_flash_error_banner(void);
 
 // Draws a corner-to-corner calibration pattern on the OLED and prints
 // all relevant dimension constants over UART0 (uart_if Message/UART_PRINT).

@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "common.h"
+#include "rom_map.h"
+#include "utils.h"
+
 
 // Adafruit driver layer
 #include "../adafruit_oled_lib/Adafruit_GFX.h"
@@ -59,6 +62,9 @@
 
 // allow for snappier OLED UI
 #define SCROLL_STEP    3
+
+// Flash delay counts
+#define FLASH_DELAY_COUNTS 2666666UL
 
 // RGB888 (3 bytes) -> RGB565 (16-bit) for the SSD1351
 #define RGB888_TO_565(r, g, b) \
@@ -933,6 +939,22 @@ void oled_ui_update_lyrics(bool available, const char *lyrics)
         g_lyrics.text[UI_MAX_LYRICS_LEN - 1] = '\0';
     } else {
         g_lyrics.text[0] = '\0';
+    }
+}
+
+void oled_ui_flash_error_banner(void)
+{
+    int i;
+    int y = CONTENT_Y + 1;
+
+    for (i = 0; i < 3; i++) {
+        fillRect(0u, (unsigned int)y,
+                 (unsigned int)SCREEN_W, (unsigned int)LINE_H, RED);
+        MAP_UtilsDelay(FLASH_DELAY_COUNTS);
+
+        fillRect(0u, (unsigned int)y,
+                 (unsigned int)SCREEN_W, (unsigned int)LINE_H, BLACK);
+        MAP_UtilsDelay(FLASH_DELAY_COUNTS);
     }
 }
 
