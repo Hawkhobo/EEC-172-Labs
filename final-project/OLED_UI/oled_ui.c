@@ -82,22 +82,24 @@ static _ScaleParams s_scale;
 // ===========================================================================
 // Color aliases
 // ===========================================================================
-#define BLACK   0x0000u
-#define WHITE   0xFFFFu
-#define CYAN    0x07FFu
-#define YELLOW  0xFFE0u
-#define GREEN   0x07E0u
-#define BLUE    0x001Fu
-#define RED     0xF800u
-#define MAGENTA 0xF81F
-#define GREY    0x8410u
-#define DARK_GREY 0x39E7u
+#define BLACK       0x0000u
+#define WHITE       0xFFFFu
+#define CYAN        0x07FFu
+#define YELLOW      0xFFE0u
+#define GREEN       0x07E0u
+#define DARK_GREEN  0x03E0u
+#define BLUE        0x001Fu
+#define RED         0xF800u
+#define MAGENTA     0xF81F
+#define GREY        0x8410u
+#define DARK_GREY   0x39E7u
 
 // UI colour scheme - RETHEME ELEMENTS HERE!
 #define COL_BANNER_BG       BLACK
 #define COL_BANNER_ITEM     WHITE
 #define COL_BANNER_ACTIVE   CYAN
 #define COL_BANNER_ACT_TXT  BLACK
+#define COL_BANNER_DIVIDER  YELLOW
 #define COL_DIVIDER         WHITE
 #define COL_LABEL           YELLOW
 #define COL_VALUE           WHITE
@@ -459,6 +461,14 @@ static void render_banner(void)
 
     for (i = 0; i < OLED_VIEW_COUNT; i++) {
         int ix = BANNER_X_MARGIN + i * BANNER_ITEM_W;
+
+        // If it's not the first item (i=0), draw a separator to its left
+        if (i > 0) {
+            drawFastVLine(ix - 1, 0, BANNER_H - 1, COL_BANNER_DIVIDER);
+            drawFastVLine(ix, 0, BANNER_H - 1, COL_BANNER_DIVIDER);
+            drawFastVLine(ix + 1, 0, BANNER_H - 1, COL_BANNER_DIVIDER);
+        }
+        // -------------------------
 
         if (i == (int)g_view) {
             // Highlight the active tab
