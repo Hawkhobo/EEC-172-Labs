@@ -10,23 +10,23 @@
 //
 // TYPICAL CALL SEQUENCE
 // ---------------------
-//   1. oled_ui_init()                    — call once after Adafruit_Init()
-//   2. oled_ui_update_radio(...)         — push fresh data (does NOT redraw)
-//   3. oled_ui_render()                  — repaint the screen
+//   1. oled_ui_init()                    - call once after Adafruit_Init()
+//   2. oled_ui_update_radio(...)         - push fresh data (does NOT redraw)
+//   3. oled_ui_render()                  - repaint the screen
 //   On a remote button:
-//     oled_ui_navigate_left/right()      — switch view  (does NOT redraw)
-//     oled_ui_scroll_up/down()           — scroll content (does NOT redraw)
-//     oled_ui_render()                   — repaint
+//     oled_ui_navigate_left/right()      - switch view  (does NOT redraw)
+//     oled_ui_scroll_up/down()           - scroll content (does NOT redraw)
+//     oled_ui_render()                   - repaint
 //
 // ALBUM COVER / JPEG
 // ------------------
 //   oled_ui_render() draws a placeholder for the album cover view.
-//   To decode and stream a JPEG onto the OLED, call:
-//     oled_ui_render_album_jpeg(in_fn, device_ctx)
-//   where in_fn is a TJpgDec-compatible input callback supplied by the
-//   LASTFM module.  All pixel-level drawing lives here, not in lastfm.c.
+//   To decode a JPEG (baseline or progressive) and paint it onto the OLED:
+//     oled_ui_render_album_jpeg(jpeg_data, jpeg_len)
+//   where jpeg_data is a pointer to raw JPEG bytes (HTTP headers already
+//   stripped) and jpeg_len is the byte count.  Uses stb_image internally.
+//   All pixel-level drawing lives here, not in lastfm.c.
 //   See oled_ui_render_album_jpeg() below for full details.
-//   Requires LASTFM_ENABLE_JPEG to be defined project-wide.
 //
 // EXTENDING WITH NEW VIEWS
 // ------------------------
@@ -77,7 +77,7 @@ typedef enum {
 // oled_ui_render() to push changes to the screen.
 // ***************************************************************************
 
-// View 0 — Radio
+// View 0 - Radio
 typedef struct {
     char station[UI_MAX_STATION_LEN];    // "90.3 FM"
     char callsign[UI_MAX_CALLSIGN_LEN];  // "KDVS"
@@ -87,26 +87,26 @@ typedef struct {
     int  signal_strength;                // RSSI 0-100
 } RadioViewData;
 
-// View 1 — Album Cover
+// View 1 - Album Cover
 // Set available=true once the art URL has been fetched by LastFM module.
 // The actual pixel rendering is done by oled_ui_render_album_jpeg(), not
-// by oled_ui_render() — the latter only draws the placeholder / status text.
+// by oled_ui_render() - the latter only draws the placeholder / status text.
 typedef struct {
     bool available;
 } AlbumCoverData;
 
-// Views 2, 4, 5 — Generic ordered list (similar artists / genre tags / tracks)
+// Views 2, 4, 5 - Generic ordered list (similar artists / genre tags / tracks)
 typedef struct {
     char items[UI_MAX_LIST_ITEMS][UI_MAX_LIST_ITEM_LEN];
     int  count;
 } ListViewData;
 
-// View 3 — Artist Biography
+// View 3 - Artist Biography
 typedef struct {
     char text[UI_MAX_BIO_LEN];
 } ArtistBioData;
 
-// View 6 — Song Lyrics
+// View 6 - Song Lyrics
 typedef struct {
     bool available;
     char text[UI_MAX_LYRICS_LEN];
@@ -153,7 +153,7 @@ void oled_ui_render(void);
 // None of these functions trigger a redraw.  Call oled_ui_render() when
 // you want the new data to appear on screen.
 
-// View 0 — Radio
+// View 0 - Radio
 // Pass NULL for any string you do not wish to update.
 void oled_ui_update_radio(const char *station,
                            const char *callsign,
@@ -162,29 +162,29 @@ void oled_ui_update_radio(const char *station,
                            int progress_pct,
                            int signal_strength);
 
-// View 1 — Album Cover
+// View 1 - Album Cover
 // Set available=false while art is loading or unavailable.
 void oled_ui_update_album_cover(bool available);
 // Placeholder for future JPEG path:
 // void oled_ui_update_album_cover_jpeg(const unsigned char *data, unsigned int len);
 
-// View 2 — Similar Artists
+// View 2 - Similar Artists
 // artists[][UI_MAX_LIST_ITEM_LEN], count <= UI_MAX_LIST_ITEMS
 void oled_ui_update_similar_artists(const char artists[][UI_MAX_LIST_ITEM_LEN],
                                      int count);
 
-// View 3 — Artist Biography
+// View 3 - Artist Biography
 void oled_ui_update_artist_bio(const char *bio);
 
-// View 4 — Genre Tags
+// View 4 - Genre Tags
 void oled_ui_update_genre_tags(const char tags[][UI_MAX_LIST_ITEM_LEN],
                                 int count);
 
-// View 5 — Similar Tracks
+// View 5 - Similar Tracks
 void oled_ui_update_similar_tracks(const char tracks[][UI_MAX_LIST_ITEM_LEN],
                                     int count);
 
-// View 6 — Song Lyrics
+// View 6 - Song Lyrics
 // Set available=false (and lyrics=NULL) when lyrics cannot be retrieved.
 void oled_ui_update_lyrics(bool available, const char *lyrics);
 
@@ -202,42 +202,29 @@ void oled_ui_draw_diagnostics(void);
 
 // ---- JPEG album-cover rendering ----
 //
-// Requires LASTFM_ENABLE_JPEG to be defined project-wide and TJpgDec sources
-// present in LASTFM/tjpgdec/.
+// oled_ui_render_album_jpeg(jpeg_data, jpeg_len)
 //
-// OledJpegInFn — input callback type compatible with TJpgDec's infunc.
-//   Signature mirrors UINT(*)(JDEC*, BYTE*, UINT) without requiring
-//   tjpgdec.h in this header.  The LASTFM module provides jpeg_in_cb
-//   which streams bytes from an open network socket.
-//
-// oled_ui_render_album_jpeg(in_fn, device_ctx)
-//   Drives TJpgDec to decode a JPEG and paint it into the album-cover
-//   content area (rows BANNER_H..127, all 128 columns).
+//   Decodes a JPEG image (baseline or progressive) from a memory buffer
+//   and paints it into the album-cover content area (rows BANNER_H..127,
+//   all 128 columns) using stb_image.
 //
 //   Responsibilities owned here (NOT in lastfm.c):
-//     - TJpgDec work buffer allocation
-//     - jpeg_out_cb: receives decoded RGB888 MCU blocks, converts to RGB565,
-//       scales to fit the content area, and calls drawPixel()
-//     - Aspect-ratio preserving scale + letterbox fill
-//     - jd_prepare() and jd_decomp() call site
+//     - stb_image decode call (stbi_load_from_memory)
+//     - Aspect-ratio preserving nearest-neighbour scale + letterbox fill
+//     - RGB888 -> RGB565 conversion and drawPixel() loop
+//     - stbi_image_free() after the draw pass
 //
 //   Responsibilities owned by the caller (lastfm.c):
-//     - Opening the TLS/HTTP socket to the CDN
-//     - Consuming the HTTP headers
-//     - Providing in_fn (jpeg_in_cb) to stream bytes from the socket
-//     - Closing the socket after this function returns
+//     - Downloading the full JPEG HTTP response into a buffer
+//     - Stripping the HTTP headers to obtain the raw JPEG bytes
+//     - Passing the raw JPEG pointer and byte count to this function
 //
-//   @param in_fn       TJpgDec-compatible input callback (from lastfm.c)
-//   @param device_ctx  Opaque context pointer passed through to in_fn
-//                      (pointer to _JpegStream in lastfm.c)
-//   @return  0 on success, negative LASTFM_ERR_* on failure.
-//            Returns LASTFM_ERR_NO_JPEG_SUPPORT immediately if
-//            LASTFM_ENABLE_JPEG is not defined.
-typedef unsigned int (*OledJpegInFn)(void *jd,
-                                     uint8_t *buf,
-                                     size_t nbytes);
+//   @param jpeg_data  Pointer to the first byte of the raw JPEG data
+//                     (after HTTP headers have been stripped).
+//   @param jpeg_len   Number of bytes in jpeg_data.
+//   @return  0 (LASTFM_OK) on success, -8 (LASTFM_ERR_JPEG) on failure.
 
-int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx);
+int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len);
 
 
 #endif

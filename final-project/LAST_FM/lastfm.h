@@ -34,11 +34,11 @@
 #define LASTFM_API_HOST          "ws.audioscrobbler.com"
 #define LASTFM_API_PORT          80
 
-// Last.fm CDN host for album art images (requires TLS — port 443)
+// Last.fm CDN host for album art images (requires TLS - port 443)
 #define LASTFM_CDN_HOST          "lastfm.freetls.fastly.net"
 #define LASTFM_CDN_PORT          443
 
-// HTTP receive buffer.  Last.fm JSON responses are typically 2–8 KB.
+// HTTP receive buffer.  Last.fm JSON responses are typically 2-8 KB.
 // CC3200 has 256 KB RAM total; 6 KB here is a reasonable balance.
 #define LASTFM_HTTP_BUF_SIZE     6144
 
@@ -51,7 +51,13 @@
 #define LASTFM_MAX_LIST_ITEMS    10
 
 // Maximum image URL length stored internally.
-#define LASTFM_MAX_IMG_URL_LEN   128
+// Last.fm CDN URLs can reach ~130 chars; 160 gives comfortable margin.
+#define LASTFM_MAX_IMG_URL_LEN   160
+
+// Download buffer for the full JPEG HTTP response (headers + image body).
+// Last.fm "large" (174x174) JPEGs are typically 8-14 KB.
+// 20 KB provides comfortable headroom for the full response.
+#define LASTFM_JPEG_BUF_SIZE     20480
 
 // ---------------------------------------------------------------------------
 // Return codes
@@ -128,7 +134,7 @@ int LastFM_QueryAndUpdateViews(const char *artist, const char *track);
  * If album art is unavailable or JPEG support is not compiled in, a grey
  * placeholder rectangle with the text "No Art" is drawn instead.
  *
- * This function takes approximately 1–3 seconds on typical Wi-Fi.
+ * This function takes approximately 1-3 seconds on typical Wi-Fi.
  * Calling it while a different OLED view is active will corrupt that view's
  * content; navigate to OLED_VIEW_ALBUM_COVER first.
  *
