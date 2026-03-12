@@ -218,37 +218,44 @@ int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
 {
     int            img_w, img_h, channels;
     unsigned char *pixels;
-    int            sx, sy;
-    int            dx, dy;
-    unsigned int   r, g, b;
+    /* Bilinear: iterate over destination pixels, inverse-map into source.
+     * All coordinates in 8-bit fixed point (<<8 = *256) to avoid floats. */
+    int            dy_out, dx_out;   /* destination pixel counters          */
+    int            screen_x, screen_y;
+    int            src_y_fp, src_x_fp; /* source coords in 8.8 fixed point  */
+    int            y0, y1, x0, x1;     /* integer source pixel indices       */
+    int            fy, fx;             /* fractional weights (0..255)        */
+    unsigned int   r0, g0, b0;         /* top-row horizontal blend result    */
+    unsigned int   r1, g1, b1;         /* bottom-row horizontal blend result */
+    unsigned int   r, g, b;            /* final vertical blend result        */
+    const unsigned char *p00, *p10, *p01, *p11; /* 4 source pixel pointers  */
 
     if (!jpeg_data || jpeg_len <= 0) {
         UART_PRINT("[OLED] render_album_jpeg: null/empty input\n\r");
         return -8;
     }
 
-    // Clear the content area to black first (letterbox margins stay black)
+    /* Clear the content area to black first (letterbox margins stay black) */
     fillRect(0u, (unsigned int)CONTENT_Y,
              (unsigned int)SCREEN_W, (unsigned int)CONTENT_H, 0x0000u);
 
-    // Reset bump-allocator pool before every decode.
-    // stbi__jpeg_test() and stbi__jpeg_load() both call stbi__malloc; the pool
-    // cursor must be at 0 at the start of each call to prevent exhaustion.
+    /* Reset bump-allocator pool before every decode.
+     * stbi__jpeg_test() and stbi__jpeg_load() both call stbi__malloc; the pool
+     * cursor must be at 0 at the start of each call to prevent exhaustion. */
     stbi_pool_reset();
 
-    // Decode the JPEG from memory.
-    // desired_channels=3 forces RGB output regardless of source format.
+    /* Decode the JPEG from memory.
+     * desired_channels=3 forces RGB output regardless of source format. */
     pixels = stbi_load_from_memory(
                  (const stbi_uc *)jpeg_data, jpeg_len,
                  &img_w, &img_h, &channels, 3);
 
     if (!pixels) {
         const char *reason = stbi_failure_reason();
-        UART_PRINT("[OLED] stbi decode failed: %s (pool used: %u / 70656)\n\r",
+        UART_PRINT("[OLED] stbi decode failed: %s (pool used: %u / 52224)\n\r",
                    reason ? reason : "unknown",
                    stbi_pool_used_bytes());
-        stbi_pool_reset();   /* release partially-used pool on failure */
-        // Draw visible error placeholder
+        stbi_pool_reset();
         fillRect(8u, (unsigned int)(CONTENT_Y + 40), 112u, 32u, 0x4208u);
         ui_str(14, CONTENT_Y + 46, "Art unavailable", WHITE, 0x4208u, 1);
         ui_str(14, CONTENT_Y + 56, "JPEG decode err", WHITE, 0x4208u, 1);
@@ -257,34 +264,84 @@ int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
 
     UART_PRINT("[OLED] stbi decoded %dx%d (%d ch)\n\r", img_w, img_h, channels);
 
-    // Compute aspect-ratio-preserving nearest-neighbour scale parameters
     compute_scale(img_w, img_h);
 
-    // Map source pixels to OLED pixels using nearest-neighbour
-    for (sy = 0; sy < img_h; sy++) {
-        dy = CONTENT_Y + s_scale.dst_y + (sy * s_scale.dst_h) / s_scale.src_h;
-        if (dy < CONTENT_Y || dy >= SCREEN_H) continue;
+    /* Bilinear upscale: iterate over every destination pixel and sample the
+     * four nearest source pixels, blending with 8-bit fixed-point weights.
+     *
+     * Inverse map: src_coord = dst_i * (src_dim - 1) * 256 / (dst_dim - 1)
+     * The *256 gives 8 fractional bits; >> 8 gives the integer part, & 255
+     * gives the fractional weight toward the next sample.
+     *
+     * Guard: if dst_dim == 1 the division is skipped (src_fp stays 0). */
+    for (dy_out = 0; dy_out < s_scale.dst_h; dy_out++) {
+        screen_y = CONTENT_Y + s_scale.dst_y + dy_out;
+        if (screen_y < CONTENT_Y || screen_y >= SCREEN_H) continue;
 
-        for (sx = 0; sx < img_w; sx++) {
-            dx = s_scale.dst_x + (sx * s_scale.dst_w) / s_scale.src_w;
-            if (dx < 0 || dx >= SCREEN_W) continue;
+        if (s_scale.dst_h > 1) {
+            src_y_fp = dy_out * (img_h - 1) * 256 / (s_scale.dst_h - 1);
+        } else {
+            src_y_fp = 0;
+        }
+        y0 = src_y_fp >> 8;
+        y1 = (y0 + 1 < img_h) ? y0 + 1 : y0;
+        fy = src_y_fp & 255;
 
-            // pixels is packed RGB, 3 bytes per pixel
-            r = pixels[(sy * img_w + sx) * 3 + 0];
-            g = pixels[(sy * img_w + sx) * 3 + 1];
-            b = pixels[(sy * img_w + sx) * 3 + 2];
-            drawPixel(dx, dy, RGB888_TO_565(r, g, b));
+        for (dx_out = 0; dx_out < s_scale.dst_w; dx_out++) {
+            screen_x = s_scale.dst_x + dx_out;
+            if (screen_x < 0 || screen_x >= SCREEN_W) continue;
+
+            if (s_scale.dst_w > 1) {
+                src_x_fp = dx_out * (img_w - 1) * 256 / (s_scale.dst_w - 1);
+            } else {
+                src_x_fp = 0;
+            }
+            x0 = src_x_fp >> 8;
+            x1 = (x0 + 1 < img_w) ? x0 + 1 : x0;
+            fx = src_x_fp & 255;
+
+            /* Pointers to the four surrounding source pixels (packed RGB) */
+            p00 = pixels + (y0 * img_w + x0) * 3;
+            p10 = pixels + (y0 * img_w + x1) * 3;
+            p01 = pixels + (y1 * img_w + x0) * 3;
+            p11 = pixels + (y1 * img_w + x1) * 3;
+
+            /* Horizontal blend along top row */
+            r0 = ((unsigned int)p00[0] * (256u - (unsigned int)fx)
+                + (unsigned int)p10[0] * (unsigned int)fx) >> 8;
+            g0 = ((unsigned int)p00[1] * (256u - (unsigned int)fx)
+                + (unsigned int)p10[1] * (unsigned int)fx) >> 8;
+            b0 = ((unsigned int)p00[2] * (256u - (unsigned int)fx)
+                + (unsigned int)p10[2] * (unsigned int)fx) >> 8;
+
+            /* Horizontal blend along bottom row */
+            r1 = ((unsigned int)p01[0] * (256u - (unsigned int)fx)
+                + (unsigned int)p11[0] * (unsigned int)fx) >> 8;
+            g1 = ((unsigned int)p01[1] * (256u - (unsigned int)fx)
+                + (unsigned int)p11[1] * (unsigned int)fx) >> 8;
+            b1 = ((unsigned int)p01[2] * (256u - (unsigned int)fx)
+                + (unsigned int)p11[2] * (unsigned int)fx) >> 8;
+
+            /* Vertical blend between the two row results */
+            r = (r0 * (256u - (unsigned int)fy)
+               + r1 * (unsigned int)fy) >> 8;
+            g = (g0 * (256u - (unsigned int)fy)
+               + g1 * (unsigned int)fy) >> 8;
+            b = (b0 * (256u - (unsigned int)fy)
+               + b1 * (unsigned int)fy) >> 8;
+
+            drawPixel(screen_x, screen_y, RGB888_TO_565(r, g, b));
         }
     }
 
-    stbi_image_free(pixels);    /* no-op with bump allocator */
-    stbi_pool_reset();          /* reclaim entire pool for next decode */
+    stbi_image_free(pixels);
+    stbi_pool_reset();
 
     UART_PRINT("[OLED] Album art drawn (%dx%d -> %dx%d at +%d,+%d)\n\r",
                img_w, img_h,
                s_scale.dst_w, s_scale.dst_h,
                s_scale.dst_x, s_scale.dst_y);
-    return 0;  // LASTFM_OK
+    return 0;
 }
 
 // ===========================================================================
