@@ -990,11 +990,44 @@ void oled_ui_update_similar_tracks(const char tracks[][UI_MAX_LIST_ITEM_LEN],
 void oled_ui_update_lyrics(bool available, const char *lyrics)
 {
     g_lyrics.available = available;
-    if (available && lyrics) {
-        strncpy(g_lyrics.text, lyrics, UI_MAX_LYRICS_LEN - 1);
-        g_lyrics.text[UI_MAX_LYRICS_LEN - 1] = '\0';
-    } else {
+
+    if (!available || !lyrics) {
         g_lyrics.text[0] = '\0';
+        return;
+    }
+
+    /* Strip LRC timestamps of the form [MM:SS.xx] from synced lyrics.
+     * Input:  "[00:27.62]It's always around me\n[00:33.34]Not nearly...\n"
+     * Output: "It's always around me\nNot nearly...\n"
+     *
+     * A timestamp is exactly 10 chars: '[' DD ':' DD '.' DD ']'
+     * Any '[' that does not match this pattern is kept verbatim so that
+     * lyrics containing bracketed text (e.g. "[yeah]") render correctly.
+     * A single space immediately after a closing ']' is also consumed.
+     * Output is clamped to UI_MAX_LYRICS_LEN - 1 characters. */
+    {
+        const char *src = lyrics;
+        char       *dst = g_lyrics.text;
+        char       *end = dst + (UI_MAX_LYRICS_LEN - 1);
+
+        while (*src && dst < end) {
+            if (src[0] == '['        &&
+                src[1] >= '0' && src[1] <= '9' &&
+                src[2] >= '0' && src[2] <= '9' &&
+                src[3] == ':'        &&
+                src[4] >= '0' && src[4] <= '9' &&
+                src[5] >= '0' && src[5] <= '9' &&
+                src[6] == '.'        &&
+                src[7] >= '0' && src[7] <= '9' &&
+                src[8] >= '0' && src[8] <= '9' &&
+                src[9] == ']') {
+                src += 10;
+                if (*src == ' ') src++;
+            } else {
+                *dst++ = *src++;
+            }
+        }
+        *dst = '\0';
     }
 }
 

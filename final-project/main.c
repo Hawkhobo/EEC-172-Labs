@@ -87,6 +87,8 @@
 #include "DEMO/demo_code.h"
 #endif
 
+#include "LYRICS/lyrics_data.h"
+
 // Last.fm API key -- register at https://www.last.fm/api/account/create
 #define LASTFM_API_KEY        "21c2eee2edef4c433f750fedbb43fa94"
 
@@ -202,6 +204,19 @@ static void query_lastfm(void)
 
         oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
 
+        {
+            const LyricsEntry *le = LyricsData_Find(artist, track);
+            if (le && !le->instrumental && le->synced_lyrics) {
+                oled_ui_update_lyrics(true, le->synced_lyrics);
+                UART_PRINT("[UI_DEBUG][Lyrics] Found: '%s'\n\r", track);
+            } else {
+                oled_ui_update_lyrics(false, NULL);
+                UART_PRINT("[UI_DEBUG][Lyrics] None for '%s' (%s)\n\r",
+                           track,
+                           (le && le->instrumental) ? "instrumental" : "not found");
+            }
+        }
+
         oled_ui_set_view(OLED_VIEW_RADIO);
         oled_ui_render();
     // Production environment
@@ -218,6 +233,15 @@ static void query_lastfm(void)
         UART_PRINT("[LastFM] %d API call(s) succeeded\n\r", calls);
 
         oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
+
+        {
+            const LyricsEntry *le = LyricsData_Find(artist, track);
+            if (le && !le->instrumental && le->synced_lyrics) {
+                oled_ui_update_lyrics(true, le->synced_lyrics);
+            } else {
+                oled_ui_update_lyrics(false, NULL);
+            }
+        }
 
         if (calls > 0) {
             oled_ui_set_view(OLED_VIEW_RADIO);
