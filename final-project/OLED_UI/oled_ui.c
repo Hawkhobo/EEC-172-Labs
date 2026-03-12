@@ -15,22 +15,24 @@
 #include "../LAST_FM/lastfm.h"
 
 // ===========================================================================
-// JPEG album-cover support  (compiled in only when LASTFM_ENABLE_JPEG is set)
+// JPEG album-cover support
 // ===========================================================================
 // oled_ui.c owns everything that touches pixels during JPEG decode:
-//   - TJpgDec work buffer
 //   - RGB888 to RGB565 conversion macro
 //   - Scale parameter computation (aspect-ratio preserving, letterbox)
-//   - jpeg_out_cb: TJpgDec output callback -> drawPixel()
 //   - oled_ui_render_album_jpeg(): public entry point called by lastfm.c
 //
 // lastfm.c owns the network side:
-//   - Opening the TLS socket to the CDN
-//   - Skipping the HTTP response headers
-//   - jpeg_in_cb: TJpgDec input callback that streams bytes from the socket
+//   - Downloading the full HTTP response (headers + JPEG body) into s_jpeg_buf
+//   - Stripping HTTP headers to expose the raw JPEG bytes
+//   - Passing (jpeg_data, jpeg_len) to oled_ui_render_album_jpeg()
+//
+// stb_image (stb_image.c / stb_image.h) handles the actual decode:
+//   - Supports both baseline and progressive JPEGs
+//   - Allocates and frees heap memory internally (~36 KB peak for 48x48)
 // ===========================================================================
 
-#include "../LAST_FM/tjpgdec/tjpgd.h"
+#include "../LAST_FM/stb_image/stb_image.h"
 
 // ===========================================================================
 // Layout constants
@@ -41,14 +43,14 @@
 
 // Banner (top navigation bar)
 #define BANNER_H           12   // pixels tall (includes 1-px bottom divider)
-#define BANNER_ITEM_W      18   // px per item  (7 × 18 = 126; 1-px left margin)
+#define BANNER_ITEM_W      18   // px per item  (7 * 18 = 126; 1-px left margin)
 #define BANNER_X_MARGIN     1   // left margin before first item
 
 // Content area (below the banner)
 #define CONTENT_Y        BANNER_H
 #define CONTENT_H        (SCREEN_H - BANNER_H)
 
-// Font geometry (Adafruit 5×7 glcdfont at size-1)
+// Font geometry (Adafruit 5x7 glcdfont at size-1)
 #define CHAR_W             6    // 5px glyph + 1px gap
 #define CHAR_H             8
 #define LINE_H             9    // CHAR_H + 1px row gap
@@ -66,13 +68,10 @@
                      (((unsigned int)(g) & 0xFCu) << 3) | \
                      (((unsigned int)(b) & 0xF8u) >> 3) ))
 
-// TJpgDec work area — 3.5 KB comfortably covers 16×16 MCU blocks.
-#define _JPGDEC_WORK_SZ  3500
-static unsigned char s_jpgdec_work[_JPGDEC_WORK_SZ];
-
-// Scaling parameters computed by compute_scale() and used by jpeg_out_cb().
+// Scaling parameters computed by compute_scale() and used by
+// oled_ui_render_album_jpeg().
 typedef struct {
-    int src_w, src_h;   // decoded image dimensions (after TJpgDec scale factor)
+    int src_w, src_h;   // decoded image dimensions
     int dst_x, dst_y;   // top-left offset within the content area (letterbox)
     int dst_w, dst_h;   // final pixel dimensions written to the OLED
 } _ScaleParams;
@@ -82,18 +81,18 @@ static _ScaleParams s_scale;
 // ===========================================================================
 // Color aliases
 // ===========================================================================
-#define BLACK   0x0000u
-#define WHITE   0xFFFFu
-#define CYAN    0x07FFu
-#define YELLOW  0xFFE0u
-#define GREEN   0x07E0u
-#define BLUE    0x001Fu
-#define RED     0xF800u
-#define MAGENTA 0xF81F
-#define GREY    0x8410u
+#define BLACK     0x0000u
+#define WHITE     0xFFFFu
+#define CYAN      0x07FFu
+#define YELLOW    0xFFE0u
+#define GREEN     0x07E0u
+#define BLUE      0x001Fu
+#define RED       0xF800u
+#define MAGENTA   0xF81Fu
+#define GREY      0x8410u
 #define DARK_GREY 0x39E7u
 
-// UI colour scheme - RETHEME ELEMENTS HERE!
+// UI colour scheme
 #define COL_BANNER_BG       BLACK
 #define COL_BANNER_ITEM     WHITE
 #define COL_BANNER_ACTIVE   CYAN
@@ -110,7 +109,7 @@ static _ScaleParams s_scale;
 #define COL_SCROLL_IND      MAGENTA
 
 // ===========================================================================
-// Low-level drawing helpers (all static — internal use only)
+// Low-level drawing helpers (all static - internal use only)
 // ===========================================================================
 
 // Draw a null-terminated ASCII string starting at pixel (x, y)
@@ -131,7 +130,6 @@ static void ui_clear_rect(int x, int y, int w, int h)
 }
 
 // Draw a filled horizontal progress bar.
-//   (x,y) = top-left corner, w/h = total bar size, pct = 0..100
 static void ui_progress_bar(int x, int y, int w, int h, int pct)
 {
     int fill;
@@ -147,18 +145,17 @@ static void ui_progress_bar(int x, int y, int w, int h, int pct)
 }
 
 // Draw 4 signal-strength bars
-// Bars grow in height from left to right.  strength = 0..100
 static void ui_signal_bars(int x, int y, int strength)
 {
     int filled_bars, i;
     if (strength < 0)   strength = 0;
     if (strength > 100) strength = 100;
-    filled_bars = (strength * 4 + 50) / 100;   // round to 0-4 bars
+    filled_bars = (strength * 4 + 50) / 100;
 
     for (i = 0; i < 4; i++) {
-        int bh = 3 + i * 2;                     // heights: 3, 5, 7, 9
+        int bh = 3 + i * 2;
         int bx = x + i * 5;
-        int by = y + (9 - bh);                  // align bottoms
+        int by = y + (9 - bh);
         unsigned int col = (i < filled_bars) ? COL_SIGNAL_BAR : DARK_GREY;
         fillRect((unsigned int)bx, (unsigned int)by,
                  3u, (unsigned int)bh, col);
@@ -166,44 +163,30 @@ static void ui_signal_bars(int x, int y, int strength)
 }
 
 // Draw small scroll-indicator dots on the right edge of the screen.
-//   show_up / show_down  indicate whether more content exists in that direction.
 static void ui_scroll_indicators(bool show_up, bool show_down)
 {
     if (show_up) {
-        // Two-pixel dot at top-right of content area
         fillRect(125u, (unsigned int)(CONTENT_Y + 2 + BANNER_H), 2u, 4u, COL_SCROLL_IND);
     }
     if (show_down) {
-        // Two-pixel dot at bottom-right of screen
         fillRect(125u, (unsigned int)(SCREEN_H - 6), 2u, 4u, COL_SCROLL_IND);
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // compute_scale
 //
-// Fills s_scale so that a src_w × src_h image is fitted inside the content
-// area (SCREEN_W × CONTENT_H) with the aspect ratio preserved.
-// Any unused border (letterbox / pillar) is already black from the fillRect
-// call in oled_ui_render_album_jpeg().
+// Fills s_scale so that a src_w x src_h image fits inside the content
+// area (SCREEN_W x CONTENT_H) with the aspect ratio preserved.
+// Unused border (letterbox / pillar) is left black.
 // ---------------------------------------------------------------------------
 static void compute_scale(int src_w, int src_h)
 {
-    // Choose the scale that fills the smaller dimension exactly:
-    //   ratio_x = SCREEN_W  / src_w
-    //   ratio_y = CONTENT_H / src_h
-    //   use whichever ratio is smaller (fit-within, not crop)
-    //
-    // Integer comparison: ratio_x <= ratio_y
-    //   <=>  SCREEN_W * src_h <= CONTENT_H * src_w
     int dst_w, dst_h;
     if (SCREEN_W * src_h <= CONTENT_H * src_w) {
-        // Width-constrained: fill full width
         dst_w = SCREEN_W;
         dst_h = (src_h * SCREEN_W) / src_w;
     } else {
-        // Height-constrained: fill full content height
         dst_h = CONTENT_H;
         dst_w = (src_w * CONTENT_H) / src_h;
     }
@@ -212,102 +195,79 @@ static void compute_scale(int src_w, int src_h)
     s_scale.src_h = src_h;
     s_scale.dst_w = dst_w;
     s_scale.dst_h = dst_h;
-    // Centre the image within the content area
     s_scale.dst_x = (SCREEN_W  - dst_w) / 2;
     s_scale.dst_y = (CONTENT_H - dst_h) / 2;
 }
 
 // ---------------------------------------------------------------------------
-// jpeg_out_cb — TJpgDec output callback
+// oled_ui_render_album_jpeg - public implementation
 //
-// Called by jd_decomp() for each decoded MCU block (up to 16×16 pixels).
-// Converts RGB888 -> RGB565 and maps source pixels onto the OLED content
-// area using integer nearest-neighbour scaling.
+// Decodes jpeg_data[0..jpeg_len-1] using stb_image, then maps the decoded
+// RGB pixels onto the OLED content area with nearest-neighbour scaling.
+// Supports both baseline and progressive JPEGs.
+//
+// Returns 0 (LASTFM_OK) on success, -8 (LASTFM_ERR_JPEG) on failure.
 // ---------------------------------------------------------------------------
-static int jpeg_out_cb(JDEC *jd, void *bitmap, JRECT *rect)
+int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
 {
-    uint8_t *rgb = (uint8_t *)bitmap;
-    int sy, sx;
-    uint8_t r, g, b;
+    int            img_w, img_h, channels;
+    unsigned char *pixels;
+    int            sx, sy;
+    int            dx, dy;
+    unsigned int   r, g, b;
 
-    for (sy = rect->top; sy <= rect->bottom; sy++) {
-        for (sx = rect->left; sx <= rect->right; sx++) {
-            r = *rgb++;
-            g = *rgb++;
-            b = *rgb++;
-
-            // Nearest-neighbour map from source pixel to OLED pixel
-            int dx = s_scale.dst_x + (sx * s_scale.dst_w) / s_scale.src_w;
-            int dy = CONTENT_Y + s_scale.dst_y +
-                     (sy * s_scale.dst_h) / s_scale.src_h;
-
-            if (dx >= 0 && dx < SCREEN_W &&
-                dy >= CONTENT_Y && dy < SCREEN_H) {
-                drawPixel(dx, dy, RGB888_TO_565(r, g, b));
-            }
-        }
+    if (!jpeg_data || jpeg_len <= 0) {
+        UART_PRINT("[OLED] render_album_jpeg: null/empty input\n\r");
+        return -8;
     }
-    return 1;  // JDR_OK — continue decoding
-}
-
-// ---------------------------------------------------------------------------
-// oled_ui_render_album_jpeg — public implementation
-//
-// See oled_ui.h for the full contract.
-// ---------------------------------------------------------------------------
-int oled_ui_render_album_jpeg(OledJpegInFn in_fn, void *device_ctx)
-{
-    JDEC         jd;
-    JRESULT      jres;
-    uint8_t      scale;
-    unsigned int dec_w;
-    unsigned int dec_h;
 
     // Clear the content area to black first (letterbox margins stay black)
     fillRect(0u, (unsigned int)CONTENT_Y,
              (unsigned int)SCREEN_W, (unsigned int)CONTENT_H, 0x0000u);
 
-    jres = jd_prepare(&jd,
-                      (size_t(*)(JDEC *, uint8_t *, size_t))in_fn,
-                      s_jpgdec_work, _JPGDEC_WORK_SZ,
-                      device_ctx);
-    if (jres != JDR_OK) {
-         /* jres==8 (JDR_FMT3) = progressive/unsupported JPEG standard.
-          * Draw a visible placeholder so the screen is not just black. */
-         const char *reason = (jres == 8) ? "Progressive JPEG" :
-                              (jres == 3) ? "No memory"        : "Bad JPEG";
-         UART_PRINT("[OLED] jd_prepare failed: %s (JDR=%d)\n\r",
-                    reason, (int)jres);
-         fillRect(8u, (unsigned int)(CONTENT_Y + 40),
-                  112u, 32u, 0x4208u);
-         ui_str(14, CONTENT_Y + 46, "Art unavailable", WHITE, 0x4208u, 1);
-         ui_str(14, CONTENT_Y + 56, reason,           WHITE, 0x4208u, 1);
-         return -8;
-     }
+    // Decode the JPEG from memory.
+    // desired_channels=3 forces RGB output regardless of source format.
+    pixels = stbi_load_from_memory(
+                 (const stbi_uc *)jpeg_data, jpeg_len,
+                 &img_w, &img_h, &channels, 3);
 
-    UART_PRINT("[OLED] JPEG %u x %u\n\r", jd.width, jd.height);
-
-    // Choose TJpgDec hardware scale factor:
-    //   scale=0 -> full resolution
-    //   scale=1 -> 1/2 in each dimension  (use for images >= 128 px wide)
-    //   scale=2 -> 1/4                    (use for very large images >= 512 px)
-    // After TJpgDec scaling, compute_scale() handles the final NN step.
-    scale = 0;
-    if (jd.width >= 512) scale = 2;
-
-    // Decoded dimensions after TJpgDec halving
-    dec_w = jd.width  >> scale;
-    dec_h = jd.height >> scale;
-    compute_scale((int)dec_w, (int)dec_h);
-
-    jres = jd_decomp(&jd, jpeg_out_cb, scale);
-    if (jres != JDR_OK) {
-        UART_PRINT("[OLED] jd_decomp failed (%d)\n\r", (int)jres);
-        return -8;  // LASTFM_ERR_JPEG
+    if (!pixels) {
+        const char *reason = stbi_failure_reason();
+        UART_PRINT("[OLED] stbi decode failed: %s\n\r",
+                   reason ? reason : "unknown");
+        // Draw visible error placeholder
+        fillRect(8u, (unsigned int)(CONTENT_Y + 40), 112u, 32u, 0x4208u);
+        ui_str(14, CONTENT_Y + 46, "Art unavailable", WHITE, 0x4208u, 1);
+        ui_str(14, CONTENT_Y + 56, "JPEG decode err", WHITE, 0x4208u, 1);
+        return -8;
     }
 
-    UART_PRINT("[OLED] Album art rendered (%dx%d -> %dx%d at +%d,+%d)\n\r",
-               (int)dec_w, (int)dec_h,
+    UART_PRINT("[OLED] stbi decoded %dx%d (%d ch)\n\r", img_w, img_h, channels);
+
+    // Compute aspect-ratio-preserving nearest-neighbour scale parameters
+    compute_scale(img_w, img_h);
+
+    // Map source pixels to OLED pixels using nearest-neighbour
+    for (sy = 0; sy < img_h; sy++) {
+        dy = CONTENT_Y + s_scale.dst_y + (sy * s_scale.dst_h) / s_scale.src_h;
+        if (dy < CONTENT_Y || dy >= SCREEN_H) continue;
+
+        for (sx = 0; sx < img_w; sx++) {
+            dx = s_scale.dst_x + (sx * s_scale.dst_w) / s_scale.src_w;
+            if (dx < 0 || dx >= SCREEN_W) continue;
+
+            // pixels is packed RGB, 3 bytes per pixel
+            r = pixels[(sy * img_w + sx) * 3 + 0];
+            g = pixels[(sy * img_w + sx) * 3 + 1];
+            b = pixels[(sy * img_w + sx) * 3 + 2];
+            drawPixel(dx, dy, RGB888_TO_565(r, g, b));
+        }
+    }
+
+    stbi_image_free(pixels);
+
+    UART_PRINT("[OLED] Album art drawn (%dx%d -> %dx%d at +%d,+%d)\n\r",
+               img_w, img_h,
                s_scale.dst_w, s_scale.dst_h,
                s_scale.dst_x, s_scale.dst_y);
     return 0;  // LASTFM_OK
@@ -403,10 +363,10 @@ static int ui_count_lines(const char *text)
 
 // Render a block of word-wrapped text inside the content area.
 //
-//   text        — null-terminated source string ('\n' forces a line break)
-//   y_start     — top pixel of first visible line (must be >= CONTENT_Y)
-//   skip_lines  — number of leading wrapped lines to skip (scroll offset)
-//   fg          — text foreground colour
+//   text        - null-terminated source string ('\n' forces a line break)
+//   y_start     - top pixel of first visible line (must be >= CONTENT_Y)
+//   skip_lines  - number of leading wrapped lines to skip (scroll offset)
+//   fg          - text foreground colour
 //
 // Returns the TOTAL number of wrapped lines in the text (not just those
 // drawn), so the caller can compute scroll limits.
@@ -478,7 +438,7 @@ static void render_banner(void)
 }
 
 // ===========================================================================
-// View 0 — Radio
+// View 0 - Radio
 // ===========================================================================
 
 // Copy up to n chars from src; append "..." if truncated.
@@ -574,7 +534,7 @@ static void render_radio_view(void)
 }
 
 // ===========================================================================
-// View 1 — Album Cover
+// View 1 - Album Cover
 // ===========================================================================
 static void render_album_cover_view(void)
 {
@@ -589,7 +549,7 @@ static void render_album_cover_view(void)
         ui_str(20, by + bh + 6,  "Album art loading", COL_MUTED, BLACK, 1);
         ui_str(28, by + bh + 16, "or unavailable.",   COL_MUTED, BLACK, 1);
     } else {
-        // Art URL is cached — oled_ui_render_album_jpeg() will overwrite this
+        // Art URL is cached - oled_ui_render_album_jpeg() will overwrite this
         // area immediately after oled_ui_render() returns.  Show a brief
         // "loading" indicator so the display is not blank during the fetch.
         int cy = CONTENT_Y + (CONTENT_H / 2) - CHAR_H;
@@ -1026,7 +986,7 @@ void oled_ui_draw_diagnostics(void)
     fillRect(0u, 0u, (unsigned int)SCREEN_W,
              (unsigned int)BANNER_H, BLUE);
 
-    // Full-screen red border — 1px thick on all four edges
+    // Full-screen red border - 1px thick on all four edges
     // Top edge
     drawFastHLine(0, 0,            SCREEN_W,     RED);
     // Bottom edge
@@ -1061,10 +1021,10 @@ void oled_ui_draw_diagnostics(void)
     // 3. Text labels at known pixel positions
     //    If these appear in the wrong place you know the coord mapping.
     // ------------------------------------------------------------------
-    // "0,0" near top-left (x=2, y=2) — inside banner zone, expect blue bg
+    // "0,0" near top-left (x=2, y=2) - inside banner zone, expect blue bg
     ui_str(2, 2, "0,0", WHITE, BLUE, 1);
 
-    // Bottom-right label — drawn at (SCREEN_W - 6*7, SCREEN_H - CHAR_H - 1)
+    // Bottom-right label - drawn at (SCREEN_W - 6*7, SCREEN_H - CHAR_H - 1)
     //   = (128 - 42, 128 - 9) = (86, 119) for a 7-char string
     ui_str(SCREEN_W - CHAR_W * 7, SCREEN_H - CHAR_H - 1,
            "127,127", YELLOW, BLACK, 1);
