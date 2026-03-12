@@ -80,6 +80,7 @@
 #include "IR_REMOTE_INPUT/ir_remote_input.h"
 #include "LAST_FM/lastfm.h"
 #include "TSOP311_IR_RECEIVER/tsop311_ir_receiver.h"
+#include "DEMO/demo_code.h"
 
 // Last.fm API key -- register at https://www.last.fm/api/account/create
 #define LASTFM_API_KEY        "21c2eee2edef4c433f750fedbb43fa94"
@@ -185,12 +186,14 @@ static void format_station(float freq, char *dst)
 static void query_lastfm(void)
 {
     // -----------------------------------------------------------------
-    // TODO: replace these with live RDS-decoded artist / track strings
-    //       once your RDS implementation is complete.
+    // TODO: replace with live RDS-decoded artist / track strings
+    //       once RDS implementation is complete. (Bah Humbug)
     // -----------------------------------------------------------------
     int         calls;
-    const char *artist = "Tame Impala";
-    const char *track  = "Let It Happen";
+    const char *artist;
+    const char *track;
+
+    Demo_GetNextMetadata(&artist, &track);
 
     UART_PRINT("[LastFM] Querying: '%s' by '%s'\n\r", track, artist);
     calls = LastFM_QueryAndUpdateViews(artist, track);
