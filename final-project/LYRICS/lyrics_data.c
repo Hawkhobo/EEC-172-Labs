@@ -25,27 +25,25 @@ static const char s_synced_TAME_IMPALA_LET_IT_HAPPEN[] =
     "moment and the sound\n[07:40.40]Oh, but maybe I was ready all along\n[07:45."
     "30]";
 
-static const char s_synced_THE_STROKES_THE_MODERN_AGE[] =
-    "[00:40.00] Up on a hill is where we begin\n[00:42.95] This little story a lo"
-    "ng time ago\n[00:46.00]\n[00:52.90] Start to pretend, stop pretending\n[00:5"
-    "6.00] It seems this game is simply never ending\n[00:59.65]\n[01:05.40] Oh, "
-    "in the sun, sun, having fun\n[01:07.95] It's in my blood, I just can't help "
-    "it\n[01:10.90] Don't want you here right now, let me go\n[01:15.00] Oh, let "
-    "me g-g-g-g-g-g-g-go\n\n[01:21.30] Leaving just in time\n[01:25.00] Staying f"
-    "or a while\n[01:28.10] Rolling in the ocean\n[01:31.47] Trying to catch her "
-    "eye\n\n[01:34.50] Work hard and say it's easy\n[01:38.00] Do it just to plea"
-    "se me\n[01:41.00] Tomorrow will be different\n[01:44.50] So I pretend I'm le"
-    "avin'\n[01:48.95]\n[02:14.40] Our fears are different now\n[02:16.30] We tra"
-    "in an AVA\n[02:17.60] I wish you hadn't stayed\n[02:19.30] My vision's clear"
-    "er now but I'm unafraid\n[02:23.00]\n[02:28.25] Flying overseas\n[02:29.60] "
-    "No time to feel the breeze\n[02:31.80] I took too many varieties\n[02:35.00]"
-    "\n[02:40.80] Oh, in the sunshine having fun\n[02:43.60] It's in my blood, I "
-    "just can't help it\n[02:46.00] Don't want you here right now. let me go, woo"
-    "\n[02:51.00] Darlin', let me g-g-g-g-g-g-go\n\n[02:56.90] Leaving just in ti"
-    "me\n[03:00.00] Staying for a while\n[03:03.40] Rollin' in the ocean\n[03:07."
-    "00] Tryin' to catch her eye\n\n[03:09.99] Work hard and say it's easy\n[03:1"
-    "3.50] Do it just to please me\n[03:16.60] Tomorrow will be different\n[03:19"
-    ".90] So this is why I'm leavin'\n[03:23.30]";
+static const char s_synced_THE_STROKES_REPTILIA[] =
+    "[00:37.75] He seemed impressed by the way you came in\n[00:43.31] Tell us a"
+    " story, I know you're not boring\n[00:49.87] I was afraid that you would no"
+    "t insist\n[00:55.32] You sound so sleepy, just take this, now leave me\n[0"
+    "1:01.09] I said: Please don't slow me down if I'm going too fast\n[01:07.1"
+    "3] You're in a strange part of our town\n[01:14.88] \n[01:25.72] Yeah, the"
+    " night's not over\n[01:28.97] You're not trying hard enough\n[01:33.09] Our"
+    " lives are changing lanes\n[01:36.00] You ran me off the road\n[01:39.21] T"
+    "he wait is over\n[01:40.82] I'm now taking over\n[01:44.02] You're no long"
+    "er laughing\n[01:47.10] I'm not drowning fast enough\n[01:51.99] \n[02:15."
+    "19] Now every time that I look at myself\n[02:20.36] I thought I told you,"
+    " this world is not for you\n[02:26.86] The room is on fire as she's fixing"
+    " her hair\n[02:32.54] You sound so angry, just calm down you found me\n[02"
+    ":38.21] I said: Please don't slow me down if I'm going too fast\n[02:44.47"
+    "] You're in a strange part of our town\n[02:51.16] \n[03:02.91] Yeah, the "
+    "night's not over\n[03:05.82] You're not trying hard enough\n[03:10.24] Our"
+    " lives are changing lanes\n[03:12.94] You ran me off the road\n[03:16.21] "
+    "The wait is over\n[03:17.95] I'm now taking over\n[03:21.18] You're no lon"
+    "ger laughing\n[03:24.33] I'm not drowning fast enough\n[03:27.74] ";
 
 static const char s_synced_COLDPLAY_CLOCKS[] =
     "[00:30.06] The lights go out and I can't be saved\n[00:33.90] Tides that I t"
@@ -104,195 +102,13 @@ static const char s_synced_RADIOHEAD_KARMA_POLICE[] =
     "..)\n[03:46.40](Yeah...)\n[03:52.77](Yeah...)\n[03:55.90](Yeah...)\n[03:59.1"
     "0](Yeah...)\n[04:01.16]";
 
-static const char s_synced_PIXIES_MONKEY_GONE_TO_HEAVEN[] =
-    "[00:03.60] There was a guy\n[00:06.33] \n[00:11.79] An underwater guy who co"
-    "ntrolled the sea\n[00:16.80] \n[00:19.76] Got killed by ten million pounds o"
-    "f sludge from New York and New Jersey\n[00:25.78] This monkey's gone to heav"
-    "en\n[00:29.77] This monkey's gone to heaven\n[00:33.92] This monkey's gone t"
-    "o heaven\n[00:38.02] This monkey's gone to heaven\n[00:43.35] \n[00:53.27] T"
-    "he creature in the sky\n[00:56.96] Got sucked in a hole, now there's a hole "
-    "in the sky\n[01:04.95] And the ground's not cold\n[01:06.96] And if the grou"
-    "nd's not cold, everything is gonna burn\n[01:11.51] We'll all take turns\n[0"
-    "1:13.47] I'll get mine too\n[01:15.18] This monkey's gone to heaven\n[01:19."
-    "26] This monkey's gone to heaven\n[01:23.35] This monkey's gone to heaven\n["
-    "01:27.53] This monkey's gone to heaven\n[01:31.14] Rock me, Joe\n[01:34.32] "
-    "\n[01:50.50] If man is five\n[01:52.48] If man is five\n[01:54.34] If man is"
-    " five\n[01:56.69] Then the devil is six\n[01:58.53] Then the devil is six\n["
-    "02:00.58] Then the devil is six\n[02:02.91] Then the devil is six\n[02:04.76"
-    "] And if the devil is six\n[02:06.65] Then God is seven\n[02:08.76] Then God"
-    " is seven\n[02:10.72] Then God is seven\n[02:12.85] This monkey's gone to he"
-    "aven\n[02:16.94] This monkey's gone to heaven\n[02:21.22] This monkey's gone"
-    " to heaven\n[02:25.15] This monkey's gone to heaven\n[02:29.40] This monkey'"
-    "s gone to heaven\n[02:33.50] This monkey's gone to heaven\n[02:37.61] This m"
-    "onkey's gone to heaven\n[02:41.62] This monkey's gone to heaven\n[02:45.83] "
-    "This monkey's gone to heaven\n[02:50.33] ";
-
-static const char s_synced_METALLICA_CREEPING_DEATH[] =
-    "[00:56.34] Slaves, Hebrews born to serve\n[00:59.30] To the Pharaoh\n[01:01."
-    "30] Heed, to his every word\n[01:04.01] Live in fear\n[01:06.22] Faith of th"
-    "e unknown one\n[01:08.73] The deliverer\n[01:10.60] Wait, something must be "
-    "done\n[01:13.68] Four hundred years\n[01:16.28] \n[01:25.27] So let it be wr"
-    "itten\n[01:27.65] So let it be done\n[01:30.20] I'm sent here by the chosen "
-    "one\n[01:34.93] So let it be written\n[01:37.24] So let it be done\n[01:39.5"
-    "6] To kill the first-born Pharaoh son\n[01:43.19] I'm creeping death\n[01:45"
-    ".78] \n[01:53.48] Now, let my people go\n[01:56.40] Land of Goshen\n[01:58.3"
-    "9] Go, I will be with thee\n[02:01.16] Bush of fire\n[02:02.74] Blood, runni"
-    "ng red and strong\n[02:05.89] Down the Nile\n[02:07.79] Plague, darkness thr"
-    "ee days long\n[02:10.83] Hail to fire\n[02:13.39] \n[02:22.10] So let it be "
-    "written\n[02:24.86] So let it be done\n[02:27.19] I'm sent here by the chose"
-    "n one\n[02:31.98] So let it be written\n[02:34.19] So let it be done\n[02:36"
-    ".34] To kill the first-born Pharaoh son\n[02:40.20] I'm creeping death\n[02:"
-    "42.98] \n[03:59.31] Die by my hand (die)\n[04:02.79] I creep across the land"
-    " (die)\n[04:05.51] Killing first-born man (die)\n[04:09.32] Die by my hand ("
-    "die)\n[04:13.00] I creep across the land (die)\n[04:15.73] Killing first bor"
-    "n man (die)\n[04:19.56] \n[04:26.75] I rule the midnight air\n[04:29.70] The"
-    " destroyer\n[04:31.33] Born, I shall soon be there\n[04:34.43] Deadly mass\n"
-    "[04:35.95] I creep the steps and floor\n[04:39.22] Final darkness\n[04:41.06"
-    "] Blood, lambs blood painted door\n[04:43.80] I shall pass\n[04:46.69] \n[04"
-    ":55.99] So let it be written\n[04:58.15] So let it be done\n[05:00.48] I'm s"
-    "ent here by the chosen one\n[05:05.59] So let it be written\n[05:07.75] So l"
-    "et it be done\n[05:10.04] To kill the first-born Pharaoh son\n[05:13.54] I'm"
-    " creeping death\n[05:14.35] ";
-
-static const char s_synced_DEATH_SYMBOLIC[] =
-    "[00:26.80] I don't mean to dwell\n[00:30.75] But I can't help myself\n[00:33"
-    ".45] When I feel the vibe\n[00:36.95] And taste a memory\n[00:39.86] Of a ti"
-    "me in life\n[00:43.28] When years seemed to stand still\n[00:46.99] \n[00:53"
-    ".62] I close my eyes and sink within myself\n[00:58.22] Relive the gift of p"
-    "recious memories\n[01:03.03] In need of a fix called innocence\n[01:12.36] "
-    "\n[01:23.88] When did it begin?\n[01:27.53] The change to come was undetecta"
-    "ble\n[01:32.90] The open wounds expose the importance of our innocence\n[01:"
-    "40.32] A high that can never be bought or sold\n[01:45.66] \n[02:10.23] Symb"
-    "olic acts\n[02:14.08] So vivid\n[02:18.17] Yet at the same time\n[02:22.65] "
-    "Were invisible\n[02:25.37] \n[03:28.09] Savor what you feel and what you see"
-    "\n[03:33.23] Things that may not seem important now\n[03:39.07] But may be t"
-    "omorrow\n[03:44.35] \n[03:57.16] Do you remember when\n[04:00.35] Things see"
-    "med so eternal?\n[04:03.23] Heroes were so real\n[04:06.45] Their magic froz"
-    "en in time\n[04:09.54] The only way to learn\n[04:12.40] Is be aware and hol"
-    "d on tight\n[04:16.11] \n[04:22.96] I close my eyes and sink within myself\n"
-    "[04:27.57] Relive the gift of precious memories\n[04:32.71] In need of a fix"
-    " called innocence\n[04:42.99] \n[04:53.18] When did it begin?\n[04:56.85] Th"
-    "e change to come was undetectable\n[05:02.31] The open wounds expose the imp"
-    "ortance of our innocence\n[05:09.63] A high that can never be bought or sold"
-    "\n[05:16.41] \n[05:38.71] Symbolic acts\n[05:42.97] So vivid\n[05:46.99] Yet"
-    " at the same time\n[05:51.69] Were invisible\n[05:53.08] ";
-
-static const char s_synced_MGMT_KIDS[] =
-    "[00:54.52] You were a child, crawling on your knees toward it\n[01:02.09] Ma"
-    "king momma so proud\n[01:05.63] But your voice is too loud\n[01:09.32] \n[01"
-    ":11.46] We like to watch you laughing\n[01:17.54] You pick the insects off p"
-    "lants\n[01:21.38] No time to think of consequences\n[01:25.83] Control yours"
-    "elf\n[01:27.52] Take only what you need from it\n[01:33.34] A family of tree"
-    "s wanting\n[01:37.00] To be haunted\n[01:41.28] Control yourself\n[01:43.17]"
-    " Take only what you need from it\n[01:49.02] A family of trees wanting\n[01:"
-    "52.53] To be haunted\n[01:57.02] The water is warm, but it's sending me shiv"
-    "ers\n[02:04.51] A baby is born\n[02:08.09] Crying out for attention\n[02:12."
-    "51] The memories fade like looking through a fogged mirror\n[02:19.53] Decis"
-    "ion to decisions are made and not bought\n[02:23.17] But I thought this woul"
-    "dn't hurt a lot, I guess not\n[02:28.16] Control yourself\n[02:29.93] Take o"
-    "nly what you need from it\n[02:35.82] A family of trees wanting\n[02:39.48] "
-    "To be haunted\n[02:43.69] Control yourself\n[02:45.60] Take only what you ne"
-    "ed from it\n[02:51.43] A family of trees wanting\n[02:55.06] To be haunted\n"
-    "[02:58.06] \n[03:54.16] Control yourself\n[03:55.99] Take only what you need"
-    " from it\n[04:01.72] A family of trees wanting\n[04:05.28] To be haunted\n[0"
-    "4:09.68] Control yourself\n[04:11.56] Take only what you need from it\n[04:1"
-    "7.43] A family of trees wanting\n[04:20.83] To be haunted\n[04:25.25] Contro"
-    "l yourself\n[04:27.07] Take only what you need from it\n[04:32.95] A family "
-    "of trees wanting\n[04:36.39] To be haunted\n[04:40.88] Control yourself\n[04"
-    ":42.73] Take only what you need from it\n[04:48.56] A family of trees\n[04:5"
-    "2.11] ";
-
-static const char s_synced_THE_REPLACEMENTS_UNSATISFIED[] =
-    "[00:50.21] Look me in the eye\n[00:52.59] Then, tell me that I'm satisfied\n"
-    "[01:00.41] Was you satisfied?\n[01:06.42] Look me in the eye\n[01:08.40] The"
-    "n, tell me that I'm satisfied\n[01:14.43] Hey, are you satisfied?\n[01:23.05"
-    "] And it goes so slowly on\n[01:26.90] Everything I've ever wanted\n[01:34.9"
-    "2] Tell me what's wrong\n[01:37.72] Look me in the eye\n[01:40.75] And tell "
-    "me that I'm satisfied\n[01:48.32] Were you satisfied?\n[01:53.96] Look me in"
-    " the eye\n[01:56.60] Then, tell me I'm satisfied\n[02:02.79] And now are you"
-    " satisfied?\n[02:10.65] Everything goes\n[02:12.58] Well, anything goes all "
-    "of the time\n[02:18.59] Everything you dream of\n[02:20.55] Is right in fron"
-    "t of you\n[02:22.84] And everything is a lie (or) And liberty is a lie\n[02:"
-    "26.24] Look me in the eye\n[02:28.04] And tell me that I'm satisfed\n[02:29."
-    "94] Look me in the eye\n[02:36.19] Unsatisfied\n[02:43.15] I'm so, I'm so un"
-    "satisfied\n[02:50.31] I'm so dissatisfied\n[02:58.27] I'm so, I'm so unsatis"
-    "fied\n[03:06.12] I'm so unsatisfied\n[03:12.12] Well, I'm-a\n[03:14.14] I'm "
-    "so, I'm so unsatisfied\n[03:22.16] I'm so dissatis, dissattis...\n[03:29.57]"
-    " I'm so\n[03:34.89] ";
-
-static const char s_synced_GANG_OF_FOUR_DAMAGED_GOODS[] =
-    "[00:22.67] The change will do you good\n[00:25.57] I always knew it would\n["
-    "00:28.47] Sometimes I'm thinking that I love you\n[00:31.53] But I know it's"
-    " only lust\n[00:34.62] Your kiss so sweet\n[00:37.78] Your sweat so sour\n[0"
-    "0:46.95] Your kiss so sweet\n[00:50.02] Your sweat so sour\n[00:53.00] Somet"
-    "imes I'm thinking that I love you\n[00:56.05] But I know it's only lust\n[00"
-    ":59.06] The sins of the flesh\n[01:02.00] Are simply sins of lust\n[01:05.20"
-    "] Sweat's running down your back\n[01:08.27] Sweat's running down your neck"
-    "\n[01:11.33] Heated couplings in the sun\n[01:13.59] (Or is that untrue?)\n["
-    "01:14.90] Colder couplings in the night\n[01:16.64] (Never saw your body)\n["
-    "01:17.95] Your kiss so sweet\n[01:20.48] Your sweat so sour\n[01:23.58] Some"
-    "times I'm thinking that I love you\n[01:26.57] But I know it's only lust\n[0"
-    "1:29.71] The change will do you good\n[01:32.73] I always knew it would\n[01"
-    ":35.75] You know the change will do you good\n[01:38.88] You know the change"
-    " will do you good\n[01:50.26] Damaged goods (ah, ah, ah, ah)\n[01:53.37] Sen"
-    "d them back (ah, ah, ah, ah)\n[01:56.07] I can't work, I can't achieve (ah, "
-    "ah, ah, ah)\n[01:59.23] Send me back (ah, ah, ah, ah)\n[02:02.39] Open the t"
-    "ill (ah, ah, ah, ah)\n[02:05.43] Give me the change you said would do me goo"
-    "d\n[02:08.86] Refund the cost (ah, ah, ah, ah)\n[02:11.94] You said you're c"
-    "heap but you're too much\n[02:13.55] Your kiss so sweet\n[02:16.16] Your swe"
-    "at so sour\n[02:19.23] Sometimes I'm thinking that I love you\n[02:21.90] Bu"
-    "t I know it's only lust\n[02:25.22] The change will do you good\n[02:28.35] "
-    "I always knew it would\n[02:31.41] You know the change will do you good\n[02"
-    ":34.38] You know the change will do you good\n[02:49.91] I'm kissing you goo"
-    "dbye\n[02:51.09] (Goodbye, goodbye, goodbye, goodbye, goodbye)\n[02:52.92] I"
-    "'m kissing you goodbye\n[02:54.41] (Goodbye, goodbye, goodbye)\n[02:56.24] I"
-    "'m kissing you goodbye\n[02:57.58] (Goodbye, goodbye, goodbye, goodbye, good"
-    "bye)\n[02:59.28] I'm kissing you goodbye\n[03:00.41] (Goodbye, goodbye, good"
-    "bye)\n[03:02.12] I'm kissing you goodbye\n[03:03.47] (Goodbye, goodbye, good"
-    "bye, goodbye, goodbye)\n[03:05.29] I'm kissing you goodbye\n[03:06.44] (Good"
-    "bye, goodbye, goodbye)\n[03:09.24] (Goodbye, goodbye, goodbye, goodbye, good"
-    "bye)\n[03:12.22] (Goodbye, goodbye, goodbye)\n[03:15.01] (Goodbye, goodbye, "
-    "goodbye, goodbye, goodbye)\n[03:17.74] Bye (goodbye, goodbye, goodbye)";
-
-static const char s_synced_COCTEAU_TWINS_CHERRY_COLOURED_FUNK[] =
-    "[00:11.24] Beetles and eggs and blues and pour a little everything else\n[00"
-    ":21.46] You steam a lens stable eyes and glass\n[00:26.29] Not get pissed of"
-    "f through my bird lips as good news\n[00:34.00] Still we can find our love d"
-    "own from behind (Ooh, ooh, ooh, ooh)\n[00:39.81] \n[00:44.61] Down far behin"
-    "d this fabulous, my turn rules (Ooh, ooh, ooh, ooh)\n[00:52.10] \n[00:54.00]"
-    " Beetles and eggs and blues and bells and eggs then blued\n[01:04.52] Beetle"
-    "s and eggs and blues and pour a little everything else\n[01:15.00] You steam"
-    " a lens stable eyes and glass\n[01:19.55] Not get pissed off through my bird"
-    " lips as good news\n[01:27.84] You'll hang the hearts black and dull as the "
-    "night\n[01:37.63] We hanged your pass and start being as you (Still being cr"
-    "ied and laughed at before)\n[01:48.69] Should I be sewn in, hugged, I can by"
-    " not saying (Still being cried and laughed at before)\n[02:01.70] Should I b"
-    "e hugged and tugged down through this tiger's masque?\n[02:12.20] Should I b"
-    "e sung and unbroken by not saying?\n[02:22.40] You mind not saying\n[02:26.2"
-    "4] He'll hang that heart's black and dull as the night\n[02:31.64] Still bei"
-    "ng cried and laughed at from behind me\n[02:36.33] We hanged your pass and s"
-    "tart being as you (Still being cried and laughed at before)\n[02:42.12] Stil"
-    "l being cried and laughed at from behind me (Still being cried and laughed a"
-    "t before)\n[02:47.42] Should I be sung and unbroken by not saying? (Still be"
-    "ing cried and laughed at before)\n[02:57.80] Hugged and tugged down through "
-    "this tiger's masque for key\n[03:06.05] ";
-
 const LyricsEntry g_lyrics_data[LYRICS_DATA_COUNT] = {
     { "Tame Impala", "Let It Happen", false, s_synced_TAME_IMPALA_LET_IT_HAPPEN },
-    { "The Strokes", "The Modern Age", false, s_synced_THE_STROKES_THE_MODERN_AGE },
+    { "The Strokes", "Reptilia", false, s_synced_THE_STROKES_REPTILIA },
     { "Coldplay", "Clocks", false, s_synced_COLDPLAY_CLOCKS },
     { "Muse", "Plug In Baby", false, s_synced_MUSE_PLUG_IN_BABY },
     { "Radiohead", "Karma Police", false, s_synced_RADIOHEAD_KARMA_POLICE },
     { "C418", "Sweden", true, NULL },
-    { "Aphex Twin", "#3", true, NULL },
-    { "Stars of the Lid", "Piano Aquieu", true, NULL },
-    { "Pixies", "Monkey Gone to Heaven", false, s_synced_PIXIES_MONKEY_GONE_TO_HEAVEN },
-    { "Metallica", "Creeping Death", false, s_synced_METALLICA_CREEPING_DEATH },
-    { "Death", "Symbolic", false, s_synced_DEATH_SYMBOLIC },
-    { "MGMT", "Kids", false, s_synced_MGMT_KIDS },
-    { "The Replacements", "Unsatisfied", false, s_synced_THE_REPLACEMENTS_UNSATISFIED },
-    { "Gang of Four", "Damaged Goods", false, s_synced_GANG_OF_FOUR_DAMAGED_GOODS },
-    { "Cocteau Twins", "Cherry-Coloured Funk", false, s_synced_COCTEAU_TWINS_CHERRY_COLOURED_FUNK },
 };
 
 const LyricsEntry *LyricsData_Find(const char *artist,

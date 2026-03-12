@@ -13,7 +13,7 @@ typedef struct {
     const char *synced_lyrics;  /* NULL if unavailable */
 } LyricsEntry;
 
-#define LYRICS_DATA_COUNT 15
+#define LYRICS_DATA_COUNT 8
 
 extern const LyricsEntry g_lyrics_data[LYRICS_DATA_COUNT];
 

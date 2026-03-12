@@ -13,13 +13,6 @@ const DemoTrack g_demo_playlist[] = {
     {"C418", "Sweden"},
     {"Aphex Twin", "#3"},
     {"Stars of the Lid", "Piano Aquieu"},
-    {"Pixies", "Monkey Gone to Heaven"},
-    {"Metallica", "Creeping Death"},
-    {"Death", "Symbolic"},
-    {"MGMT", "Kids"},
-    {"The Replacements", "Unsatisfied"},
-    {"Gang of Four", "Damaged Goods"},
-    {"Cocteau Twins", "Cherry-Coloured Funk"}
 };
 
 // Logic to cycle through tracks
