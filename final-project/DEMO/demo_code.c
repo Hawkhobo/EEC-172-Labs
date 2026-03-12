@@ -5,7 +5,7 @@ int g_demo_index = 0;
 
 // Define the actual data here
 const DemoTrack g_demo_playlist[] = {
-    {"Tame Impala", "Let it Happen"},
+    {"Tame Impala", "Let It Happen"},
     {"The Strokes", "Reptilia"},
     {"Coldplay", "Clocks"},
     {"Muse", "Plug In Baby"},
@@ -13,13 +13,6 @@ const DemoTrack g_demo_playlist[] = {
     {"C418", "Sweden"},
     {"Aphex Twin", "#3"},
     {"Stars of the Lid", "Piano Aquieu"},
-    {"Pixies", "Monkey Gone to Heaven"},
-    {"Metallica", "Creeping Death"},
-    {"Symbolic", "Death"},
-    {"MGMT", "Kids"},
-    {"The Replacements", "Unsatisfied"},
-    {"Gang of Four", "Damaged Goods"},
-    {"Cocteau Twins", "Cherry-Coloured Funk"}
 };
 
 // Logic to cycle through tracks

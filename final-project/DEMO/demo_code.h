@@ -22,7 +22,7 @@ typedef struct {
 extern const DemoTrack g_demo_playlist[];
 extern int g_demo_index;
 
-#define DEMO_PLAYLIST_COUNT 15
+#define DEMO_PLAYLIST_COUNT 8
 
 // Function prototype for use in main.c
 void Demo_GetNextMetadata(const char **artist, const char **track);

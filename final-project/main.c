@@ -87,8 +87,33 @@
 #include "DEMO/demo_code.h"
 #endif
 
+#include "LYRICS/lyrics_data.h"
+
 // Last.fm API key -- register at https://www.last.fm/api/account/create
 #define LASTFM_API_KEY        "21c2eee2edef4c433f750fedbb43fa94"
+
+// ---------------------------------------------------------------------------
+// Lyric-sync / progress-bar timer (TIMERA1, 100 ms periodic)
+// ---------------------------------------------------------------------------
+// TIMERA1 is available: the IR receiver owns SysTick and GPIOA1, not any
+// of the four CC3200 hardware timers.
+//
+// g_ms_tick is a monotonic millisecond counter incremented by the ISR.
+// It is 32-bit unsigned and wraps after ~49 days -- safe for subtraction.
+// g_track_start_ms is snapshotted at the end of each query_lastfm() call
+// so that (g_ms_tick - g_track_start_ms) gives elapsed time for the track.
+// ---------------------------------------------------------------------------
+#define LYRICS_TICK_MS      100u                    /* ISR period (ms)      */
+#define LYRICS_TICK_RELOAD  (LYRICS_TICK_MS * 80000u) /* ticks at 80 MHz   */
+
+volatile uint32_t g_ms_tick       = 0u;
+static   uint32_t g_track_start_ms = 0u;
+
+static void LyricsTimerISR(void)
+{
+    MAP_TimerIntClear(TIMERA1_BASE, TIMER_TIMA_TIMEOUT);
+    g_ms_tick += LYRICS_TICK_MS;
+}
 
 //*****************************************************************************
 //                      Global Variables for Vector Table
@@ -202,6 +227,27 @@ static void query_lastfm(void)
 
         oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
 
+        {
+            const LyricsEntry *le = LyricsData_Find(artist, track);
+            if (le && !le->instrumental && le->synced_lyrics) {
+                oled_ui_update_lyrics(true, le->synced_lyrics);
+                UART_PRINT("[UI_DEBUG][Lyrics] Found: '%s'\n\r", track);
+            } else {
+                oled_ui_update_lyrics(false, NULL);
+                UART_PRINT("[UI_DEBUG][Lyrics] None for '%s' (%s)\n\r",
+                           track,
+                           (le && le->instrumental) ? "instrumental" : "not found");
+            }
+        }
+
+        /* Snapshot the timer so elapsed time is measured from this point.
+         * This is set AFTER oled_ui_update_lyrics() resets the lyric index,
+         * so the first oled_ui_tick() call sees a clean slate. */
+        g_track_start_ms = g_ms_tick;
+        UART_PRINT("[UI_DEBUG][Sync] Track start ms=%lu, duration=%d ms\n\r",
+                   (unsigned long)g_track_start_ms,
+                   LastFM_GetTrackDurationMs());
+
         oled_ui_set_view(OLED_VIEW_RADIO);
         oled_ui_render();
     // Production environment
@@ -218,6 +264,18 @@ static void query_lastfm(void)
         UART_PRINT("[LastFM] %d API call(s) succeeded\n\r", calls);
 
         oled_ui_update_album_cover(LastFM_AlbumArtAvailable());
+
+        {
+            const LyricsEntry *le = LyricsData_Find(artist, track);
+            if (le && !le->instrumental && le->synced_lyrics) {
+                oled_ui_update_lyrics(true, le->synced_lyrics);
+            } else {
+                oled_ui_update_lyrics(false, NULL);
+            }
+        }
+
+        /* Snapshot the timer after oled_ui_update_lyrics() resets the index */
+        g_track_start_ms = g_ms_tick;
 
         if (calls > 0) {
             oled_ui_set_view(OLED_VIEW_RADIO);
@@ -331,6 +389,15 @@ int main(void) {
    // IR Receiver
    IR_Init();
 
+   // TIMERA1: 100 ms periodic timer for progress bar + lyric sync
+   MAP_PRCMPeripheralClkEnable(PRCM_TIMERA1, PRCM_RUN_MODE_CLK);
+   while (!MAP_PRCMPeripheralStatusGet(PRCM_TIMERA1));
+   MAP_TimerConfigure(TIMERA1_BASE, TIMER_CFG_PERIODIC);
+   MAP_TimerLoadSet(TIMERA1_BASE, TIMER_A, LYRICS_TICK_RELOAD - 1u);
+   MAP_TimerIntRegister(TIMERA1_BASE, TIMER_A, LyricsTimerISR);
+   MAP_TimerIntEnable(TIMERA1_BASE, TIMER_TIMA_TIMEOUT);
+   MAP_TimerEnable(TIMERA1_BASE, TIMER_A);
+
    // Set up LastFM API
    LastFM_Init(LASTFM_API_KEY);
    UART_PRINT("LastFM initialised\n\r");
@@ -339,6 +406,18 @@ int main(void) {
 
    // Polling for Remote Inputs
    while (1) {
+       /* --- Lyric sync / progress bar ---
+        * Read g_ms_tick once to avoid a race if the ISR fires mid-expression.
+        * oled_ui_tick() is a no-op when nothing has changed, so calling it
+        * on every iteration is safe and cheap. */
+       {
+           uint32_t now    = g_ms_tick;
+           uint32_t dur_ms = (uint32_t)LastFM_GetTrackDurationMs();
+           if (dur_ms > 0u) {
+               oled_ui_tick(now - g_track_start_ms, dur_ms);
+           }
+       }
+
        // A complete IR burst has arrived - decode and dispatch
       if (IR_MessageReady()) {
           int rc5_code = IR_Decode();

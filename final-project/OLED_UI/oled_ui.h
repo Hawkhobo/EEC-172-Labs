@@ -68,7 +68,11 @@ typedef enum {
 #define UI_MAX_LIST_ITEMS       10   // max entries in any list view
 #define UI_MAX_LIST_ITEM_LEN    64   // max chars per list entry
 #define UI_MAX_BIO_LEN         1024  // artist biography
-#define UI_MAX_LYRICS_LEN      2048  // song lyrics
+#define UI_MAX_LYRICS_LEN      2048  // song lyrics (stripped, no timestamps)
+
+// Maximum number of LRC timestamp entries stored in the lyric sync index.
+// Measured max across current playlist: 59 lines (Radiohead - Karma Police).
+#define LYRICS_MAX_LINES        64
 
 
 // ***************************************************************************
@@ -187,6 +191,22 @@ void oled_ui_update_similar_tracks(const char tracks[][UI_MAX_LIST_ITEM_LEN],
 // View 6 - Song Lyrics
 // Set available=false (and lyrics=NULL) when lyrics cannot be retrieved.
 void oled_ui_update_lyrics(bool available, const char *lyrics);
+
+// Advance the progress bar and auto-scroll the lyrics view to the current line.
+//
+// Call from the main loop on every iteration, passing:
+//   elapsed_ms   -- milliseconds since the current track started
+//   duration_ms  -- total track duration from LastFM_GetTrackDurationMs()
+//
+// Behaviour:
+//   - Computes progress_pct = elapsed_ms * 100 / duration_ms (clamped 0-100).
+//   - Finds the last LRC line whose timestamp <= elapsed_ms.
+//   - If on OLED_VIEW_RADIO  and progress changed: repaints the radio view.
+//   - If on OLED_VIEW_LYRICS and the active lyric line changed: auto-scrolls
+//     and repaints the lyrics view.
+//   - Does nothing if duration_ms == 0 or neither value has changed since the
+//     last call, so it is safe and cheap to call on every loop iteration.
+void oled_ui_tick(uint32_t elapsed_ms, uint32_t duration_ms);
 
 // Flash the station/entry banner bar red three times in rapid succession.
 // Used to signal invalid input (unrecognizable entry or out-of-range frequency).
