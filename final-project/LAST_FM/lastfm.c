@@ -31,7 +31,8 @@
 // OLED UI data update API  (to populate views)
 #include "../OLED_UI/oled_ui.h"
 
-// This module's own header
+// LRCLIB API to fetch song lyrics
+#include "../LRCLIB/lrclib.h"
 
 // TJpgDec support see lastfm.h JPEG SETUP
 #include "tjpgdec/tjpgd.h"
@@ -1167,9 +1168,8 @@ int LastFM_QueryAndUpdateViews(const char *artist, const char *track)
 
     UART_PRINT("[LastFM] Querying: \"%s\" - \"%s\"\n\r", artist, track);
 
-    // Lyrics view: always unavailable via Last.fm (API retired 2014).
-    // oled_ui.c renders "(Lyrics unavailable for this track)" automatically.
-    oled_ui_update_lyrics(false, NULL);
+    // Call LRClib functionality here.
+    LRCLib_FetchLyrics(artist, track);
 
     // Album cover: reset until track.getInfo refreshes the URL
     oled_ui_update_album_cover(false);

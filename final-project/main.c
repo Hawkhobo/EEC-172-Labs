@@ -79,6 +79,7 @@
 #include "TEA5767/tea5767.h"
 #include "IR_REMOTE_INPUT/ir_remote_input.h"
 #include "LAST_FM/lastfm.h"
+#include "LRCLIB/lrclib.h"
 #include "TSOP311_IR_RECEIVER/tsop311_ir_receiver.h"
 
 // Last.fm API key -- register at https://www.last.fm/api/account/create
@@ -288,6 +289,9 @@ int main(void) {
    LastFM_Init(LASTFM_API_KEY);
    UART_PRINT("LastFM initialised\n\r");
 
+   //Set up LRCLIB API
+   LRClib_Init();
+
    query_lastfm();
 
    // Polling for Remote Inputs
@@ -446,5 +450,11 @@ int main(void) {
               }
           }
       }
+
+      // Check if we have synced lyrics available for the current track playing
+      if (LRCLib_HasSyncedLyrics())
+          if (LRCLib_UpdateSyncedDisplay(9))
+              if (oled_ui_get_view() == OLED_VIEW_LYRICS)
+                  oled_ui_render();
    }
 }
