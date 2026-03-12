@@ -25,12 +25,23 @@
 // for the next decode.
 //
 // POOL SIZE CALCULATION (64x64 JPEG, worst-case progressive, 8-byte align):
-//   stbi__jpeg x2 (test + load, bump so both counted): 36 848
-//   raw_data Y/Cb/Cr + coeff Y/Cb/Cr + alignment:      18 528
-//   linebuf x3:                                            216
-//   output pixels (64*64*3):                           12 296
-//   Total progressive:                                 67 888  (66.3 KB)
-//   Pool chosen:                                       70 656  (69 KB, +margin)
+//   stbi__jpeg x1 (test mallocs then frees LIFO, load reuses same slot):18 424
+//   raw_data Y/Cb/Cr + coeff Y/Cb/Cr + alignment:                       18 528
+//   linebuf x3:                                                             216
+//   output pixels (64*64*3):                                            12 296
+//   Total progressive:                                                  49 464  (48.3 KB)
+//   Pool chosen:                                                        52 224  (51 KB, +margin)
+//
+// WHY NOT 69 KB ANYMORE?
+//   The original bump allocator treated free() as a no-op, so stbi__jpeg_test
+//   and stbi__jpeg_load each consumed a separate ~18 KB slot.  The allocator
+//   below tracks s_stbi_pool_prev (cursor before the most recent malloc).
+//   When free(p) is called and p IS the most recently allocated block, the
+//   cursor is restored to s_stbi_pool_prev ("last-allocation pop").  For any
+//   other pointer the free is a no-op (standard bump behavior).
+//   stbi__jpeg_test does exactly one malloc + one LIFO free, so its slot is
+//   reclaimed and stbi__jpeg_load reuses it -- saving one full stbi__jpeg
+//   worth of pool (~18 KB).
 //
 // Compile-time configuration:
 //   STBI_ONLY_JPEG    - strip all non-JPEG decoders
@@ -46,10 +57,11 @@
 /* ---------------------------------------------------------------------------
  * Static bump-allocator pool
  * ------------------------------------------------------------------------- */
-#define STBI_POOL_SIZE  70656u   /* 69 KB -- see size calculation above */
+#define STBI_POOL_SIZE  52224u   /* 51 KB -- see size calculation above */
 
 static unsigned char s_stbi_pool[STBI_POOL_SIZE];
 static unsigned int  s_stbi_pool_used = 0u;
+static unsigned int  s_stbi_pool_prev = 0u;  /* cursor before most recent malloc */
 
 static void *stbi_pool_malloc(size_t sz)
 {
@@ -58,32 +70,41 @@ static void *stbi_pool_malloc(size_t sz)
     if (aligned + (unsigned int)sz > STBI_POOL_SIZE) {
         return NULL;                             /* pool exhausted */
     }
+    s_stbi_pool_prev = s_stbi_pool_used;        /* remember pre-alloc cursor */
     s_stbi_pool_used = aligned + (unsigned int)sz;
     return (void *)(s_stbi_pool + aligned);
 }
 
 static void stbi_pool_free(void *p)
 {
-    (void)p;    /* bump allocator -- individual frees are no-ops */
+    unsigned int last_start;
+    /* If p is the most recently allocated block (LIFO), pop the cursor back.
+     * This reclaims the stbi__jpeg_test allocation so stbi__jpeg_load can
+     * reuse the same pool slot.  Any other free is a no-op. */
+    last_start = (s_stbi_pool_prev + 7u) & ~7u;
+    if (p && (unsigned char *)p == s_stbi_pool + last_start) {
+        s_stbi_pool_used = s_stbi_pool_prev;
+    }
 }
 
 /* stbi_pool_realloc is only invoked on the PNG/zlib path, which is
  * compiled out by STBI_ONLY_JPEG.  Provided as a safety fallback. */
-static void *stbi_pool_realloc(void *p, size_t newsz)
+/* static void *stbi_pool_realloc(void *p, size_t newsz)
 {
     void *q = stbi_pool_malloc(newsz);
     if (q && p) {
         memcpy(q, p, newsz);
     }
     return q;
-}
+} */
 
 /* Call this after stbi_image_free() returns (i.e. after the draw loop in
  * oled_ui_render_album_jpeg).  Resets the pool so the next decode can reuse
- * all 69 KB from the beginning. */
+ * all 51 KB from the beginning. */
 void stbi_pool_reset(void)
 {
     s_stbi_pool_used = 0u;
+    s_stbi_pool_prev = 0u;
 }
 
 /* Returns the number of pool bytes consumed so far (useful for diagnostics). */
