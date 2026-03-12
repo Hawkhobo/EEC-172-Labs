@@ -208,6 +208,12 @@ static void compute_scale(int src_w, int src_h)
 //
 // Returns 0 (LASTFM_OK) on success, -8 (LASTFM_ERR_JPEG) on failure.
 // ---------------------------------------------------------------------------
+
+/* Pool reset -- implemented in stb_image.c.
+ * Must be called after stbi_image_free() to reclaim the bump-allocator pool
+ * for the next decode. */
+extern void         stbi_pool_reset(void);
+extern unsigned int stbi_pool_used_bytes(void);
 int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
 {
     int            img_w, img_h, channels;
@@ -225,6 +231,11 @@ int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
     fillRect(0u, (unsigned int)CONTENT_Y,
              (unsigned int)SCREEN_W, (unsigned int)CONTENT_H, 0x0000u);
 
+    // Reset bump-allocator pool before every decode.
+    // stbi__jpeg_test() and stbi__jpeg_load() both call stbi__malloc; the pool
+    // cursor must be at 0 at the start of each call to prevent exhaustion.
+    stbi_pool_reset();
+
     // Decode the JPEG from memory.
     // desired_channels=3 forces RGB output regardless of source format.
     pixels = stbi_load_from_memory(
@@ -233,8 +244,10 @@ int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
 
     if (!pixels) {
         const char *reason = stbi_failure_reason();
-        UART_PRINT("[OLED] stbi decode failed: %s\n\r",
-                   reason ? reason : "unknown");
+        UART_PRINT("[OLED] stbi decode failed: %s (pool used: %u / 70656)\n\r",
+                   reason ? reason : "unknown",
+                   stbi_pool_used_bytes());
+        stbi_pool_reset();   /* release partially-used pool on failure */
         // Draw visible error placeholder
         fillRect(8u, (unsigned int)(CONTENT_Y + 40), 112u, 32u, 0x4208u);
         ui_str(14, CONTENT_Y + 46, "Art unavailable", WHITE, 0x4208u, 1);
@@ -264,7 +277,8 @@ int oled_ui_render_album_jpeg(const unsigned char *jpeg_data, int jpeg_len)
         }
     }
 
-    stbi_image_free(pixels);
+    stbi_image_free(pixels);    /* no-op with bump allocator */
+    stbi_pool_reset();          /* reclaim entire pool for next decode */
 
     UART_PRINT("[OLED] Album art drawn (%dx%d -> %dx%d at +%d,+%d)\n\r",
                img_w, img_h,
