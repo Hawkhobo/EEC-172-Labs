@@ -210,6 +210,83 @@ static int json_get_name_array(const char *json_start,
     return count;
 }
 
+// Similar to json_get_name_array, but goes deeper to retrieve both the track and associated artist
+static int json_get_track_array(const char *json_start,
+                                 const char *arr_key,
+                                 char        items[][UI_MAX_LIST_ITEM_LEN],
+                                 int         max_items)
+{
+    char search[72];
+    snprintf(search, sizeof(search), "\"%s\":[", arr_key);
+
+    const char *p = strstr(json_start, search);
+    if (!p) return 0;
+    p += strlen(search);
+
+    int  count = 0;
+    char obj_buf[512];
+
+    while (count < max_items && *p) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' ||
+               *p == '\n' || *p == ',') p++;
+
+        if (*p == ']') break;
+        if (*p != '{') { p++; continue; }
+
+        const char *obj_start = p;
+        int depth = 0;
+        const char *q = p;
+        while (*q) {
+            if      (*q == '{') depth++;
+            else if (*q == '}') { depth--; if (depth == 0) { q++; break; } }
+            q++;
+        }
+
+        int obj_len = (int)(q - obj_start);
+        if (obj_len >= (int)sizeof(obj_buf))
+            obj_len = (int)sizeof(obj_buf) - 1;
+        memcpy(obj_buf, obj_start, (size_t)obj_len);
+        obj_buf[obj_len] = '\0';
+
+        char title[UI_MAX_LIST_ITEM_LEN];
+        title[0] = '\0';
+        json_get_string(obj_buf, "name", title, sizeof(title));
+        if (title[0] == '\0') { p = q; continue; }
+
+        char artist_name[UI_MAX_LIST_ITEM_LEN];
+        artist_name[0] = '\0';
+
+        const char *art_obj = strstr(obj_buf, "\"artist\":{");
+        if (art_obj) {
+            char art_buf[256];
+            const char *a = art_obj + (int)strlen("\"artist\":");
+            int adepth = 0;
+            const char *ae = a;
+            while (*ae) {
+                if      (*ae == '{') adepth++;
+                else if (*ae == '}') { adepth--; if (adepth == 0) { ae++; break; } }
+                ae++;
+            }
+            int art_len = (int)(ae - a);
+            if (art_len >= (int)sizeof(art_buf)) art_len = (int)sizeof(art_buf) - 1;
+            memcpy(art_buf, a, (size_t)art_len);
+            art_buf[art_len] = '\0';
+            json_get_string(art_buf, "name", artist_name, sizeof(artist_name));
+        }
+
+        if (artist_name[0] != '\0') {
+            snprintf(items[count], UI_MAX_LIST_ITEM_LEN,
+                     "%s - %s", title, artist_name);
+        } else {
+            strncpy(items[count], title, UI_MAX_LIST_ITEM_LEN - 1);
+            items[count][UI_MAX_LIST_ITEM_LEN - 1] = '\0';
+        }
+        count++;
+        p = q;
+    }
+    return count;
+}
+
 // ---------------------------------------------------------------------------
 // 4d  HTML / entity stripping
 //
@@ -749,20 +826,10 @@ static int query_similar_tracks(const char *artist, const char *track)
                 // Each track object has "name" (title) and nested "artist"."name"
                 const char *sim_block = strstr(body, "\"similartracks\":{");
                 if (sim_block) {
-                    // Extract track names with artist suffix:  "Title, Artist"
-                    char track_names[UI_MAX_LIST_ITEMS][UI_MAX_LIST_ITEM_LEN];
-                    int count = json_get_name_array(sim_block, "track",
-                                                    track_names,
-                                                    LASTFM_MAX_LIST_ITEMS);
+                    int count = json_get_track_array(sim_block, "track",
+                                                     items,
+                                                     LASTFM_MAX_LIST_ITEMS);
                     if (count >= 2) {
-                        // Also try to pull artist name for each track
-                        // For simplicity, just use track names (artist info is nested)
-                        int i;
-                        for (i = 0; i < count && i < UI_MAX_LIST_ITEMS; i++) {
-                            strncpy(items[i], track_names[i],
-                                    UI_MAX_LIST_ITEM_LEN - 1);
-                            items[i][UI_MAX_LIST_ITEM_LEN - 1] = '\0';
-                        }
                         got_results = count;
                         UART_PRINT("[LastFM] track.getSimilar: %d results\n\r", count);
                     }
@@ -792,9 +859,9 @@ static int query_similar_tracks(const char *artist, const char *track)
             if (body && status == 200) {
                 const char *top_block = strstr(body, "\"toptracks\":{");
                 if (top_block) {
-                    got_results = json_get_name_array(top_block, "track",
-                                                      items,
-                                                      LASTFM_MAX_LIST_ITEMS);
+                    got_results = json_get_track_array(top_block, "track",
+                                                       items,
+                                                       LASTFM_MAX_LIST_ITEMS);
                     UART_PRINT("[LastFM] artist.getTopTracks: %d results\n\r",
                                got_results);
                 }
