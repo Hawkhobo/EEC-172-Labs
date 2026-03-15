@@ -1,0 +1,1347 @@
+#LyX 2.5 created this file. For more info see https://www.lyx.org/
+\lyxformat 643
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass IEEEtran
+\begin_preamble
+% for subfigures/subtables
+\usepackage[caption=false,font=footnotesize]{subfig}
+
+% color for code
+\usepackage{xcolor}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\end_preamble
+\options journal
+\use_default_options false
+\maintain_unincluded_children no
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures false
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command bibtex
+\index_command default
+\float_placement tbh
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_title "Your Title"
+\pdf_author "Your Name"
+\pdf_bookmarks true
+\pdf_bookmarksnumbered true
+\pdf_bookmarksopen true
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder true
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle false
+\pdf_quoted_options "pdfpagelayout=OneColumn, pdfnewwindow=true, pdfstartview=XYZ, plainpages=false"
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification default
+\crossref_package prettyref
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\backgroundcolor none
+\fontcolor none
+\notefontcolor lightgray
+\boxbgcolor red
+\table_border_color default
+\table_odd_row_color default
+\table_even_row_color default
+\table_alt_row_colors_start 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\listings_params "breaklines=true,tabsize=2"
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\docbook_mathml_version 0
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+This is a template \SpecialChar LyX
+ file for articles to be submitted to journals of the Institute of Electrical and Electronics Engineers (IEEE).
+ For IEEE conference articles,
+ see the template file 
+\emph on
+IEEEtran-Conference.lyx
+\emph default
+.
+ For general info see 
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+https://wiki.lyx.org/Examples/IEEE
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+It is important that you use the correct document class options for your document..
+ These are explained in the IEEEtran documentation:
+ 
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+https://mirrors.ctan.org/macros/latex/contrib/IEEEtran/IEEEtran_HOWTO.pdf
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Title
+Introduction to AWS and RESTful APIs
+\end_layout
+
+\begin_layout Author
+Jacob Feenstra and Chun-Ho Chen
+\end_layout
+
+\begin_layout Page headings
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+EEC 172 Lab 4,
+ WQ2026
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Checkoff
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Checkoff Sheet
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lab_4_verification.jpg
+	scale 35
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+Previously doing everything only on the hardware,
+ now we are going to incorporate internet capability to allow hardware interactions coming from the launchpad to 
+\end_layout
+
+\begin_layout Enumerate
+We first go through AWS and flash the required certifications to the SPI
+\end_layout
+
+\begin_layout Enumerate
+We then connect it to WIFI (or Personal Hotspot),
+ and then connect our TI Launchpad to its shadow 
+\end_layout
+
+\begin_layout Enumerate
+We then adjust the messages coming out of the Launchpad to send formatted messages to email.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Combining this with our TV Remote + OLED combination circuit from Lab 3,
+ we then can email using text.
+\end_layout
+
+\begin_layout Section
+Background
+\end_layout
+
+\begin_layout Standard
+Modules,
+ hardware,
+ and software tools used are as follows.
+\end_layout
+
+\begin_layout Subsection
+Modules
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+spi_demo:
+ 
+\family default
+Texas Instruments CCS project that demonstrates how to use SPI signals for simple UART communication.
+ This module is co-opted and used for all parts of the lab when sending data to the OLED.
+ Note this also includes usage for the MCU as both a master & slave:
+ we leave just the code for master,
+ since that is all that the MCU will be doing.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Adafruit SSD1351 Open Source Graphics Library:
+
+\family default
+ Abridged from the Adafruit graphics library,
+ provides an API to write commands (and their subsequent data) to the OLED,
+ as well as turn it on.
+ Includes various functions to draw complex shapes on the digital display.
+ This library is used extensively in this lab & modified.
+ More information on the modifications will be detailed.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+timer:
+ 
+\family default
+Texas Instruments CCS project that shows using the LED's provided by the TI Launchpad how the MCU makes a timer using its built in hardware,
+ and is used for the lab to understand a little bit about timing.
+ 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+uart_if.c:
+
+\family default
+ Used for UART communication to the laptop serial terminal
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+aws-rest-api-ssl-demo:
+
+\family default
+ This is the beginning demo originally designed to connect to google services,
+ but now used to connect just to AWS endpoints using our certificates.
+ This also encloses the specific json files that we can send out when we connect it to the email using SNS
+\end_layout
+
+\begin_layout Subsection
+Hardware
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) CC3200 LaunchPad XL:
+ 
+\family default
+The microcontroller unit that orchestrates the SPI and UART protocols in this lab.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) Adafruit SSD1351 OLED Display:
+
+\family default
+ Digital display that accepts written commands and data from communication protocols,
+ and prints pixel output.
+ Used to acknowledge what was being sent as well as for texting in the last task.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) Breadboard:
+ 
+\family default
+The mount for the OLED + IR Receiver
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) TSOP311xx/313xx/315xx IR Receiver
+\family default
+:
+ Receiver that detects incoming IR signals and sends them to the MCU.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) AT&T S10-S3 Remotes:
+ 
+\family default
+Used as controllers to send IR signals to the assembled circuit 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) 100Ω Resistors:
+ 
+\family default
+Needed for implementation of the IR receiver circuit.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+(2) 100μF Capacitors:
+ 
+\family default
+Needed for implementation of the IR receiver circuit.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Personal Hotspot (Mobile):
+
+\family default
+ Since we could not use the campus WIFI networks for internet compatibility,
+ the next best thing would be connecting through our personal hotspot that doesn't need any more security layers than just the password
+\end_layout
+
+\begin_layout Subsection
+Software
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+TI CCS Studio:
+ 
+\family default
+Integrated Development Environment to work with the MCU,
+ debug it,
+ and write C code.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+TI SysConfig:
+ 
+\family default
+Software to multiplex pins for configuration of pinouts.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Amazon Web Services:
+
+\family default
+ Since we are trying to connect to the internet,
+ we used Amazon Web Services
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+IoT Core:
+ This is where we generate out certificates to flash to the board,
+ and to create/monitor our board shadow
+\end_layout
+
+\begin_layout Enumerate
+Simple Notification Service:
+ This is the process we use our board to communicate to the email services
+\end_layout
+
+\end_deeper
+\begin_layout Section
+Goals
+\end_layout
+
+\begin_layout Standard
+In this lab section,
+ we have 4 checkoff tasks which build off of each other.
+ 
+\end_layout
+
+\begin_layout Subsection
+Connecting to AWS and Updating the Device Shadow
+\end_layout
+
+\begin_layout Subsubsection
+Connecting to AWS
+\end_layout
+
+\begin_layout Standard
+In this checkoff,
+ we create an Amazon Web Services (AWS) IoT API account (for use with embedded systems),
+ configure it for our CC3200 microcontroller,
+ set up certificates by converting them to 
+\family typewriter
+.der
+\family default
+ or to 
+\family typewriter
+.pem
+\family default
+ files,
+ and flash them to the microcontroller.
+ Setting up an AWS account is simple,
+ but configuring the microcontroller involves creating certificates,
+ enabling policies (for HTTP GET and HTTP POST request/responses to and from the microcontroller),
+ and attaching them to a device shadow,
+ which is a virtual representation of the underlying hardware (a 
+\begin_inset Quotes eld
+\end_inset
+
+thing
+\begin_inset Quotes erd
+\end_inset
+
+ in AWS nomenclature).
+ While it is many steps,
+ it allows for signifciant fine-tuned control of functionalities extended for the microcontroller,
+ while ensuring that only your account is permitted to use these functionalities.
+ 
+\end_layout
+
+\begin_layout Standard
+Next steps involve downloading the certificate keys,
+ and using 
+\family typewriter
+OpenSSL
+\family default
+ to change their file extension for use in a Texas Instruments CCS environment.
+ Once this is done,
+ they can be flashed to the target microcontroller using the UniFlash software,
+ which enables the necessary permissions needed for AWS to work with the CC3200.
+\end_layout
+
+\begin_layout Standard
+This checkoff sets us up for the remainder of the lab,
+ but also illustrates the steps & certificates needed to use web services in an embedded systems context,
+ which is vital for using them in our Internet of Things world,
+ and extending the capabilities of microcontrollers.
+\end_layout
+
+\begin_layout Subsubsection
+Updating the Device Shadow
+\end_layout
+
+\begin_layout Standard
+The second part of the first checkoff has us writing actual code,
+ modifying an example program that uses AWS API calls to post JSON to the device shadow,
+ and fetch it.
+ We get some appreciation for the underlying socket and network libraries,
+ and how they are used with timestamping and a WLAN connection to allow for communication between microcontroller and AWS.
+ This WLAN connection comes in the form of hotspotting our computer (the machine running the microcontroller) with our phones.
+ Properly using this as our Access Point involves formatting 
+\family typewriter
+common.h
+\family default
+ appropriately.
+ We also get a feel for proper formatting of API endpoints in 
+\family typewriter
+main.c
+\family default
+,
+ by reusing code to make an HTTP GET function.
+ These details will be discussed in methods,
+ but ultimately,
+ we get an appreciation for TCP/IP layers and their role in communication with a cloud platform,
+ and how to send HTTP API endpoints to this platform.
+\end_layout
+
+\begin_layout Subsection
+Checkoff Task II:
+ Using SNS to Send a Message to Email
+\end_layout
+
+\begin_layout Standard
+In this checkoff,
+ we start to explore some of the more interesting & useful functionality that a web service can offer.
+ We get a feel for AWS topics and rules,
+ building blocks in the AWS ecosystems which allow a variety of protocols to trigger when our device shadow gets updated (in our case,
+ an HTTP POST is sent to the shadow).
+ Using the Simple Notification Service,
+ an email can be sent from the device.
+ We also experiment with JSON message syntax to get a clean,
+ coherent email to a handle of our choice,
+ using SQL-like formatting.
+ This checkoff gives us an appreciation for careful I/O control of web service endpoints,
+ and setting up other parts of the ecosystem that work in concert with the generic HTTP endpoints.
+\end_layout
+
+\begin_layout Subsection
+Checkoff Task III:
+ Integrate IR Remote Texting
+\end_layout
+
+\begin_layout Standard
+Lastly,
+ we modify our code from the final checkoff in Lab 3 to create multi-tap texting with the SNS topic,
+ rule-based AWS system!
+ By storing the value in a buffer,
+ we can send this buffer as input to the AWS HTTP POST response (specifically when the send button is hit).
+ Since both of these codebases are massive,
+ a huge part of this deliverable is being able to wrap our heads around combining the functionality of each gracefully.
+ The rule picks up on the posting,
+ and extracts the payload,
+ which then sends it over SNS.
+\end_layout
+
+\begin_layout Section
+Methods
+\end_layout
+
+\begin_layout Subsection
+Connecting to AWS and Updating the Device Shadow
+\end_layout
+
+\begin_layout Standard
+Since setting up the AWS account,
+ configuring the device shadow,
+ and flashing the certificates are step-by-step instructions,
+ there is not many unique methods to report.
+ For Windows,
+ we found installing 
+\family typewriter
+OpenSSL v1.1.1
+\family default
+ with Chocolatey was the easiest approach,
+ since doing so from OpenSSL's website would involve compiling Perl and building the binary ourselves.
+ Save for this step,
+ we follow the guide from the lab website.
+ The AWS code is a much more involved process,
+ and has a lot of moving parts.
+\end_layout
+
+\begin_layout Enumerate
+First,
+ the timestamp needs to be within the current month (and year) for the requests to the HTTP endpoint to work.
+ We update the 
+\family typewriter
+MONTH
+\family default
+ and 
+\family typewriter
+YEAR
+\family default
+ variables accordingly.
+ These variables are used in 
+\family typewriter
+set_time()
+\family default
+,
+ which
+\family typewriter
+ 
+\family default
+invokes 
+\family typewriter
+sl_DevSet()
+\family default
+ provided by the SimpleLink library.
+ This function is responsible for configuration of the CC3200's SimpleLink WiFI chip,
+ a network processor.
+ It will not work properly over the HTTP protocol without establishing an accurate date for the transaction.
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+We further specify what server we are querying.
+ In our case,
+ the server where our device shadow lives corresponds to 
+\family typewriter
+a3i55f5e4s85vq-ats.iot.us-east-1.
+\begin_inset Newline linebreak
+\end_inset
+
+amazonaws.com
+\family default
+,
+ which is using the US East 1 server (West Virginia) as requested in the first part of the lab.
+ Tjhe destination port we are communicating over is port 
+\family typewriter
+8443
+\family default
+,
+ not port 
+\family typewriter
+80
+\family default
+ (as we'd expected with an HTTP request).
+ The device shadow is at 
+\family typewriter
+/things/ChenFeenstra-CC3200-MCU/shadow
+\family default
+ on the server,
+ which will be is used in the headers for the HTTP requests by AWS.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+The CC3200 is connected to the local access point using 
+\family typewriter
+connectToAccessPoint()
+\family default
+,
+ provided by the SimpleLink library.
+ This local access point is a hotspot from one of our phones,
+ set to 
+\family typewriter
+WPA
+\family default
+ since it is password protected.
+ This is a requirement for a stable connection to the server over HTTP.
+ A positive return value (
+\family typewriter
+lRetVal
+\family default
+) from the function indicates a successful connection was established.
+\end_layout
+
+\begin_layout Enumerate
+We connect to the website with TLS encryption,
+ using 
+\family typewriter
+tls_connect()
+\family default
+.
+ This ensures that we can forgo the HTTPS encryption requirements,
+ and use just plain HTTP to connect,
+ which is better-suited (and simpler) for this lab.
+ Once this connection has been established,
+ we are now ready for our 
+\family typewriter
+HTTP POST
+\family default
+ and 
+\family typewriter
+HTTP GET
+\family default
+ endpoints!
+ We break them down next.
+ We'll finish off with the logic needed to send them to the server.
+\end_layout
+
+\begin_layout Subsubsection
+HTTP Post Anatomy
+\end_layout
+
+\begin_layout Standard
+Using primitive C string manipulation functions (
+\family typewriter
+strcpy()
+\family default
+,
+ 
+\family typewriter
+strlen()
+\family default
+) and some temporary buffers to store data,
+ we can carefully construct the payload line by line,
+ then send it,
+ all in 
+\family typewriter
+http_post()
+\family default
+.
+ This also includes newline and carriage return control characters,
+ which are represented in their human-readable format.
+ When all is finished,
+ the payload looks like the following:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+POST /things/ChenFeenstra-CC3200-MCU/shadow HTTP/1.1
+\end_layout
+
+\begin_layout Plain Layout
+Host:
+ a3i55f5e4s85vq-ats.iot.us-east-1.amazonaws.
+\end_layout
+
+\begin_layout Plain Layout
+Connection:
+ Keep-Alive
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+Content-Type:
+ application/json;
+ charset=utf-8
+\end_layout
+
+\begin_layout Plain Layout
+Content-Length:
+ strlen(DATA1)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\begin_layout Plain Layout
+	
+\begin_inset Quotes eld
+\end_inset
+
+state
+\begin_inset Quotes erd
+\end_inset
+
+ :
+ {
+\end_layout
+
+\begin_layout Plain Layout
+		
+\begin_inset Quotes eld
+\end_inset
+
+desired
+\begin_inset Quotes erd
+\end_inset
+
+:
+ {
+\end_layout
+
+\begin_layout Plain Layout
+			
+\begin_inset Quotes eld
+\end_inset
+
+var
+\begin_inset Quotes erd
+\end_inset
+
+ :
+ 
+\begin_inset Quotes eld
+\end_inset
+
+Hello:
+ phone,
+ message from CC3200 via AWS IoT!
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+		}
+\end_layout
+
+\begin_layout Plain Layout
+	}
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With this format,
+ HTTP knows it is receiving a POST request for our shadow device,
+ and it is being hosted on the specified AWS server (likely in a specific container).
+ It also knows to keep the connection alive,
+ to ensure it does not prematurely time out while data is still being sent over.
+ It knows that the relevant data is JSON using the UTF-8 character set,
+ and it also knows the length of this JSON data (so that it knows when to stop reading).
+ With all of this information,
+ this is ready to be serialized as a packet and sent to the AWS server.
+ The JSON format will be posted to the device shadow,
+ and if all is well,
+ should be viewable under it's Thing entry!
+\end_layout
+
+\begin_layout Standard
+Sending this data over the network is as simple as invoking the 
+\family typewriter
+sl_Send()
+\family default
+ function from the SimpleLink library,
+ with 4 parameters:
+ 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+sd
+\family default
+,
+ the socket descriptor which specifies the active socket (obtained from the 
+\family typewriter
+sl_Socket()
+\family default
+ call,
+ done under the hood in our 
+\family typewriter
+utils/network.c
+\family default
+).
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+pBuf
+\family default
+,
+ the pointer to buffer (this is the pointer to the buffer we have prepared with the data to be sent).
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Len
+\family default
+,
+ the length of the data in bytes to be sent.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Flags
+\family default
+,
+ specifies optional flags.
+ We set it to 
+\family typewriter
+0
+\family default
+ to ensure we are just doing a default send
+\end_layout
+
+\begin_layout Standard
+And that is it!
+ At this point,
+ the packet has been sent,
+ and if all the configuration steps were accurate,
+ the JSON will appear on the device shadow after calling 
+\family typewriter
+POST
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+HTTP Get Anatomy
+\end_layout
+
+\begin_layout Standard
+The anatomy and packet serialization for the 
+\family typewriter
+GET
+\family default
+ endpoint is virtually identical to 
+\family typewriter
+POST
+\family default
+.
+ The only change is the first header in the payload,
+ which is:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+GET /things/ChenFeenstra-CC3200-MCU/shadow HTTP/1.1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In our program flow,
+ 
+\family typewriter
+POST
+\family default
+ is called first.
+ Once this is invoked,
+ 
+\family typewriter
+GET
+\family default
+ uses the same payload and retrieves it.
+ This all happens in 
+\family typewriter
+http_get()
+\family default
+.
+ With the exception of the different header,
+ the logic is the same as 
+\family typewriter
+http_post()
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Using SNS to Send a Message to Email 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Using-SNS-to"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can now use Simple Notification Service (SNS) over AWS,
+ a lightweight messaging protocol,
+ to send an e-mail to an account of our choice using the microcontroller.
+ This requires some configuration specific to the web service.
+ AWS is organized into modules to perform functions on IoT devcies;
+ SNS allows for push messages!
+ We create an SNS topic,
+ then a subscription for it with the 
+\emph on
+EMAIL
+\emph default
+ protocol for texting,
+ and specify an endpoint to receive these messages (in this case,
+ we each used our UC Davis emails).
+ Once we confirm the subscription for this email,
+ we are ready to start pushing messages.
+ The topic created ends up being
+\family typewriter
+ $aws/things/ChenFeenstra-CC3200-MCU/
+\begin_inset Newline linebreak
+\end_inset
+
+shadow/update/accepted
+\family default
+.
+ We'll see how this plays with the IoT rule.
+\end_layout
+
+\begin_layout Standard
+Now,
+ we can also set up an IoT rule for this SNS topic.
+ The nature of the rule means that the specified message will be sent every time the device shadow is updated (in the nature of our program,
+ when it receives an HTTP endpoint).
+ We specifically set up an ACT (Message Routing rule).
+ 
+\end_layout
+
+\begin_layout Standard
+The tricky part is getting the formatting just right.
+ AN SQL statement can be used to improve on this format.
+ The one we found that resulted in a clean,
+ JSON-schema free format in our email is as follows:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+SELECT VALUE state.desired.message FROM '$aws/things/ChenFeenstra-CC3200-MCU/shadow/update/accepted'
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This specific SQL extracts the value of the JSON message from our topic,
+ recursing into the relevant part of the JSON.
+ It takes this message from an attribute in the device shadow.
+ Once we run our program again,
+ we get the message 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Hello phone,
+ message from CC3200 via AWS IoT!
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\family default
+from e-mail.
+ 
+\end_layout
+
+\begin_layout Subsection
+Integrate IR Remote Texting 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Integrate-IR-Remote"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This step involves reusing the code from Lab 3 Checkoff 3 to perform texting with the universal remote!
+ Most of the work involves combining this code with Lab 4 Checkoff 1,
+ but there is a couple of notable details to keep in mind.
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+handle_button()
+\family default
+ is where most of the modification happens (our Lab 3 report details the API from this checkoff in more detail).
+ Instead of sending it via the UART protocol,
+ we run 
+\family typewriter
+http_post(lRetVal)
+\family default
+ in this function.
+ 
+\family typewriter
+snprintf()
+\family default
+ is used prior for formatting,
+ but this is effectively all the change made to the API to get the SNS texting to work.
+ We specificlaly call this function when the 
+\family typewriter
+send
+\family default
+ button is hit (defined as the 
+\family typewriter
+MUTE
+\family default
+ button from our previous lab),
+ and send over the buffer storing the current string being typed to the OLED display.
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+main()
+\family default
+ undergoes some prominent changes to get the two codebases working together,
+ but it mostly consists of combining the two 
+\family typewriter
+main()
+\family default
+ functions,
+ allowing them to work in concert.
+ Most of the logic happens with the HTTP endpoint call in 
+\family typewriter
+handle_button()
+\family default
+.
+ Surprisingly,
+ once we did this,
+ the entire thing worked out of the box;
+ we were capable of sending text messages to our e-mails,
+ and composing them with the universal remote.
+ The steps from Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Using-SNS-to"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+tuple "list"
+
+\end_inset
+
+ ensure that the formatting is clean.
+\end_layout
+
+\begin_layout Section
+Discussion
+\end_layout
+
+\begin_layout Standard
+While working on this lab,
+ we did not run into any significant issues,
+ but it is worthwhile to report the ones that we did encounter and how they were overcame
+\end_layout
+
+\begin_layout Enumerate
+In Checkoff 1,
+ it was critical to be very careful about the certification file conversion and flashing.
+ We found that this 
+\emph on
+had
+\emph default
+ to be done with 
+\family typewriter
+OpenSSL 
+\family default
+version 1.1.1,
+ or it simply would not work.
+ The command-line syntax also had to be exact.
+ On the mac side,
+ there were unknown pitfalls with flashing certifications within specific user files that I had to figure out as well.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Also in Checkoff 1,
+ getting the local access point to play nicely had some problems.
+ We found that one of our iOS devices simply was not compatible with establishing the AWS connection over HTTP.
+ This required some troubleshooting on our part.
+ Fortunately,
+ in terms of the code in Checkoff 1,
+ this was the only hurdle we really experienced.
+ Getting 
+\family typewriter
+http_post()
+\family default
+ and 
+\family typewriter
+http_get()
+\family default
+ to work afterwards was pretty seamless.
+\end_layout
+
+\begin_layout Enumerate
+Checkoff 2 took some work to get nice formatting for the SNS message.
+ After some fiddling,
+ we figured out 2 ways to reach the same output message.
+ The first way was through just simply raw formatting,
+ and it would need to select the value and then print output.
+ But for json,
+ we had to include default,
+ and email to correctly follow the format.
+ While they both go output the same message,
+ we understand that using json formatting would be more effective long term when we have to implement other features.
+\end_layout
+
+\begin_layout Enumerate
+We anticipated a lot of difficulty when working with Checkoff 3,
+ since we were effectively merging two codebases from two different parts of the class.
+ As mentioned in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Integrate-IR-Remote"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+tuple "list"
+
+\end_inset
+
+,
+ it ended up being as simple as just plugging 
+\family typewriter
+http_post()
+\family default
+ into the conditional body when our 
+\family typewriter
+send
+\family default
+ button is pressed on the remote.
+ We also had to be careful about ensuring that all of the configuration from both checkoffs was preserved,
+ which took some time;
+ there was also some dependency issues that arose when working in this new CCS project,
+ which was expected given how many libraries are used.
+ After carefully resolving these errors,
+ the 
+\family typewriter
+http_post()
+\family default
+ worked flawlessly,
+ and we got a nicely formatted message over SNS.
+\end_layout
+
+\begin_layout Section
+Contributions
+\end_layout
+
+\begin_layout Subsection
+Jacob Feenstra
+\end_layout
+
+\begin_layout Standard
+My contributions are as follows:
+\end_layout
+
+\begin_layout Enumerate
+Wrote code on Checkoff #1
+\end_layout
+
+\begin_layout Enumerate
+Combined codebases and diagnosed issues in Checkoff #4
+\end_layout
+
+\begin_layout Enumerate
+Wrote Sections 3-5 in the report,
+ and some of Section 6.
+\end_layout
+
+\begin_layout Subsection
+Chun Ho Chen
+\end_layout
+
+\begin_layout Standard
+My contributions are as follows:
+\end_layout
+
+\begin_layout Enumerate
+Assembled,
+ flashed,
+ fixed the issues with Checkoff #1,
+ #2
+\end_layout
+
+\begin_layout Enumerate
+Wrote practice code with UART terminal instead of TV Remote circuit.
+\end_layout
+
+\begin_layout Enumerate
+Wrote Sections 1-2,
+ and some of Section 6
+\end_layout
+
+\end_body
+\end_document
